@@ -81,7 +81,10 @@ describe('CheckpointService', () => {
   });
 
   it("never touches the user's own .git, and ignores autocrlf/eol attributes", async () => {
-    const git = (...args: string[]) => execFileSync('git', args, { cwd: ws, stdio: 'pipe' }).toString();
+    // GIT_OPTIONAL_LOCKS=0 keeps this test's own `git status` from refreshing the index stat
+    // cache, which would otherwise (racily) change .git/index and make the check flaky.
+    const git = (...args: string[]) =>
+      execFileSync('git', args, { cwd: ws, stdio: 'pipe', env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } }).toString();
     git('init', '-q');
     git('config', 'user.email', 'u@example.com');
     git('config', 'user.name', 'User');
