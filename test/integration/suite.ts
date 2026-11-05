@@ -160,6 +160,28 @@ export async function run(): Promise<void> {
     }
   });
 
+  await test('"Add to Cursor" CodeLens appears above a selection and goes away without one', async () => {
+    const editor = await select('src/api.ts', 5, 7);
+    const lenses = async () =>
+      ((await vscode.commands.executeCommand<vscode.CodeLens[]>('vscode.executeCodeLensProvider', editor.document.uri)) ?? []).filter((l) =>
+        l.command?.title.includes('Add to Cursor'),
+      );
+    await new Promise((r) => setTimeout(r, 500));
+    const shown = await lenses();
+    assert(shown.length === 1 && shown[0]!.range.start.line === 4, `lenses: ${JSON.stringify(shown.map((l) => l.range.start.line))}`);
+    assert(shown[0]!.command?.command === 'cursorAgent.addSelectionToChat', 'lens command');
+    editor.selection = new vscode.Selection(4, 0, 4, 0);
+    await new Promise((r) => setTimeout(r, 100));
+    assert((await lenses()).length === 0, 'lens still shown without a selection');
+  });
+
+  await test('MCP & Plugins commands are registered', async () => {
+    const all = new Set(await vscode.commands.getCommands(true));
+    for (const c of ['cursorAgent.mcp.refresh', 'cursorAgent.mcp.add', 'cursorAgent.mcp.toggleApprove', 'cursorAgent.plugins.addDir']) {
+      assert(all.has(c), `missing ${c}`);
+    }
+  });
+
   await checkpointTests(api, `${process.env.FAKE_RECORD}.actions.json`);
   await polishTests(api);
   await sdkBackendTests(api);

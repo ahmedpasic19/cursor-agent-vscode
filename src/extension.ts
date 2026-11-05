@@ -10,6 +10,7 @@ import { fileChip } from './context/ContextCollector';
 import { imageChipForPath, MAX_IMAGE_BYTES, saveImage } from './context/Attachments';
 import { FileIndex } from './context/FileIndex';
 import { SelectionLens } from './context/SelectionLens';
+import { McpView } from './mcp/McpView';
 import type { Mode } from './shared/events';
 import type { HostMessage, WebviewMessage } from './shared/protocol';
 import { SessionIndex } from './session/SessionIndex';
@@ -182,6 +183,8 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
       timeoutMs: cfg().get<number>('runTimeoutMinutes', 30) * 60_000,
       worktreeSupported: cli.status.features?.worktree ?? false,
       workspaceRoots: (vscode.workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath),
+      approveMcps: cfg().get<boolean>('approveMcps', false),
+      pluginDirs: cfg().get<string[]>('pluginDirs', []).filter(Boolean),
     }),
     getMaxConcurrent: () => cfg().get<number>('maxConcurrentRuns', 3),
     getDefaultMode: () => cfg().get<Mode>('defaultMode', 'agent'),
@@ -744,6 +747,9 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     maxChipLines,
     log,
   });
+  const mcpView = new McpView(context, cli, log);
+  mcpView.register();
+  context.subscriptions.push(mcpView);
   const lens = new SelectionLens(() => cfg().get<boolean>('selectionCodeLens', true), process.platform === 'darwin' ? 'Cmd+I' : 'Ctrl+I');
   context.subscriptions.push(lens, vscode.languages.registerCodeLensProvider({ scheme: 'file' }, lens), vscode.languages.registerCodeLensProvider({ scheme: 'untitled' }, lens));
 

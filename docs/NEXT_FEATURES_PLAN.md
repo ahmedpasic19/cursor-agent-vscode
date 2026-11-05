@@ -1,4 +1,4 @@
-# Next features plan (v0.10)
+# Next features plan (v0.10) — implemented in 0.10.0
 
 Four features: image attachments, multi-root `@` mentions, Ctrl+I "Add to Cursor", MCP & plugins panel.
 Decisions (2026-11-05): Q1 clickable CodeLens · Q2 left sidebar view · Q3 agent gets all folders via `--add-dir` · Q4 full manager with Add/Edit server form.

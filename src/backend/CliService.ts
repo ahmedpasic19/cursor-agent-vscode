@@ -120,6 +120,17 @@ export class CliService {
     return r.code === 0 ? undefined : (r.error ?? (r.stderr || r.stdout).trim().slice(0, 300)) || `logout exited ${r.code}`;
   }
 
+  /** Run `cursor-agent <args>` to completion (MCP / plugin management). */
+  async exec(args: string[], cwd: string, timeoutMs = 60000): Promise<{ ok: boolean; stdout: string; message?: string }> {
+    if (this.refreshing) await this.refreshing;
+    if (!this.cli) return { ok: false, stdout: '', message: this.status.message ?? 'cursor-agent CLI is not available.' };
+    const r = await runCliCapture(this.cli, args, cwd, timeoutMs);
+    if (r.code === 0) return { ok: true, stdout: r.stdout };
+    const message = (r.error ?? (r.stderr || r.stdout).trim().split('\n').slice(-3).join(' ').slice(0, 400)) || `exited ${r.code}`;
+    this.log(`[cli] ${args.join(' ')} failed: ${message}`);
+    return { ok: false, stdout: r.stdout, message };
+  }
+
   /** How to launch `cursor-agent <args>` in a terminal (shellPath + shellArgs, no quoting needed). */
   terminalLaunch(args: string[]): { shellPath: string; shellArgs: string[]; env?: Record<string, string> } | undefined {
     if (!this.cli || this.cli.shell) {

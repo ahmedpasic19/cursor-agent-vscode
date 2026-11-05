@@ -21,6 +21,8 @@ export interface RunSettings {
   worktreeSupported?: boolean;
   /** All workspace folders; the ones other than this tab's cwd are passed as extra roots. */
   workspaceRoots?: string[];
+  approveMcps?: boolean;
+  pluginDirs?: string[];
 }
 
 export interface TabEvents {

@@ -7,7 +7,20 @@ Personal-use extension that runs Cursor's agent CLI from VS Code, laid out like 
 - **Left (activity bar "Cursor"):** **Account & Usage** (email, plan, backend, tokens used through this extension) and the
   **Session Manager** (new session, search, `Active · N` filter, groups with drag-and-drop, status + relative time).
 
-See PLAN.md and docs/CLI_NOTES.md.
+- **Left, "MCP & Plugins":** MCP servers from `~/.cursor/mcp.json` and `<folder>/.cursor/mcp.json` with live status,
+  tools, enable / disable / log in, and an Add/Edit form; plugin marketplaces, installed plugins, local plugin folders
+  (`--plugin-dir`), and an *Auto-approve MCP servers* toggle (`--approve-mcps`).
+
+Context:
+
+- **Ctrl+I** (Cmd+I) with a selection adds it to the chat; with nothing selected it focuses the chat. An
+  *Add to Cursor (Ctrl+I)* CodeLens shows above the selection (`cursorAgent.selectionCodeLens`). Ctrl+L still works.
+- **Images:** paste a screenshot (Ctrl+V), drop an image, or *+ → Attach image*. Images are saved per chat and sent by
+  path; the agent opens them with its read tool.
+- **Multi-root:** `@` searches every workspace folder; the other folders are passed to the agent with `--add-dir`.
+  Checkpoints (Revert) cover only the folder the chat runs in.
+
+See PLAN.md, docs/CLI_NOTES.md and docs/NEXT_FEATURES_PLAN.md.
 
 - Build: `npm run build`
 - Test: `npm test` (real-CLI e2e: `CURSOR_E2E=1 npx vitest run test/e2e.real.test.ts`)

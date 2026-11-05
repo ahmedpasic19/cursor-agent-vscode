@@ -15,6 +15,10 @@ export interface RunOptions {
   worktreeName?: string;
   /** Extra workspace roots the agent may read and edit (`--add-dir`): other multi-root folders, image folders. */
   addDirs?: string[];
+  /** `--approve-mcps`: load every configured MCP server without asking. */
+  approveMcps?: boolean;
+  /** `--plugin-dir` for each local plugin folder. */
+  pluginDirs?: string[];
 }
 
 export interface RunHandle {

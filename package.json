@@ -2,7 +2,7 @@
   "name": "cursor-agent-vscode",
   "displayName": "Cursor Agent",
   "description": "Cursor's agent in a VS Code sidebar chat (personal use).",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "publisher": "local",
   "icon": "media/logo.png",
   "private": true,
@@ -55,6 +55,12 @@
           "type": "webview",
           "id": "cursorAgent.sessions",
           "name": "Sessions"
+        },
+        {
+          "id": "cursorAgent.mcp",
+          "name": "MCP & Plugins",
+          "icon": "$(plug)",
+          "visibility": "collapsed"
         },
         {
           "type": "webview",
@@ -168,6 +174,100 @@
         "title": "Refresh Account & Usage",
         "category": "Cursor Agent",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "cursorAgent.mcp.refresh",
+        "title": "Refresh MCP Servers",
+        "category": "Cursor Agent",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "cursorAgent.mcp.add",
+        "title": "Add MCP Server…",
+        "category": "Cursor Agent",
+        "icon": "$(add)"
+      },
+      {
+        "command": "cursorAgent.mcp.edit",
+        "title": "Edit MCP Server",
+        "category": "Cursor Agent",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "cursorAgent.mcp.remove",
+        "title": "Remove MCP Server",
+        "category": "Cursor Agent",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "cursorAgent.mcp.enable",
+        "title": "Enable MCP Server",
+        "category": "Cursor Agent",
+        "icon": "$(play)"
+      },
+      {
+        "command": "cursorAgent.mcp.disable",
+        "title": "Disable MCP Server",
+        "category": "Cursor Agent",
+        "icon": "$(circle-slash)"
+      },
+      {
+        "command": "cursorAgent.mcp.login",
+        "title": "Log In to MCP Server",
+        "category": "Cursor Agent",
+        "icon": "$(key)"
+      },
+      {
+        "command": "cursorAgent.mcp.openConfig",
+        "title": "Open MCP Config",
+        "category": "Cursor Agent",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "cursorAgent.mcp.openGlobalConfig",
+        "title": "Open Global MCP Config (~/.cursor/mcp.json)",
+        "category": "Cursor Agent"
+      },
+      {
+        "command": "cursorAgent.mcp.toggleApprove",
+        "title": "Toggle Auto-approve MCP Servers",
+        "category": "Cursor Agent"
+      },
+      {
+        "command": "cursorAgent.plugins.addMarketplace",
+        "title": "Add Plugin Marketplace…",
+        "category": "Cursor Agent",
+        "icon": "$(add)"
+      },
+      {
+        "command": "cursorAgent.plugins.removeMarketplace",
+        "title": "Remove Plugin Marketplace",
+        "category": "Cursor Agent",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "cursorAgent.plugins.updateMarketplace",
+        "title": "Update Plugin Marketplace",
+        "category": "Cursor Agent",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "cursorAgent.plugins.addDir",
+        "title": "Add Local Plugin Folder…",
+        "category": "Cursor Agent",
+        "icon": "$(add)"
+      },
+      {
+        "command": "cursorAgent.plugins.removeDir",
+        "title": "Remove Local Plugin Folder",
+        "category": "Cursor Agent",
+        "icon": "$(close)"
+      },
+      {
+        "command": "cursorAgent.plugins.reveal",
+        "title": "Reveal Plugin Folder",
+        "category": "Cursor Agent",
+        "icon": "$(folder-opened)"
       }
     ],
     "menus": {
@@ -191,6 +291,31 @@
           "command": "cursorAgent.openSettings",
           "when": "view == cursorAgent.sessions",
           "group": "navigation@4"
+        },
+        {
+          "command": "cursorAgent.mcp.add",
+          "when": "view == cursorAgent.mcp",
+          "group": "navigation@1"
+        },
+        {
+          "command": "cursorAgent.mcp.refresh",
+          "when": "view == cursorAgent.mcp",
+          "group": "navigation@2"
+        },
+        {
+          "command": "cursorAgent.mcp.openConfig",
+          "when": "view == cursorAgent.mcp",
+          "group": "navigation@3"
+        },
+        {
+          "command": "cursorAgent.plugins.addMarketplace",
+          "when": "view == cursorAgent.mcp",
+          "group": "plugins@1"
+        },
+        {
+          "command": "cursorAgent.plugins.addDir",
+          "when": "view == cursorAgent.mcp",
+          "group": "plugins@2"
         }
       ],
       "editor/context": [
@@ -237,6 +362,129 @@
         {
           "command": "cursorAgent.addFileToChat",
           "when": "editorIsOpen"
+        },
+        {
+          "command": "cursorAgent.mcp.edit",
+          "when": "false"
+        },
+        {
+          "command": "cursorAgent.mcp.remove",
+          "when": "false"
+        },
+        {
+          "command": "cursorAgent.mcp.enable",
+          "when": "false"
+        },
+        {
+          "command": "cursorAgent.mcp.disable",
+          "when": "false"
+        },
+        {
+          "command": "cursorAgent.mcp.login",
+          "when": "false"
+        },
+        {
+          "command": "cursorAgent.plugins.removeMarketplace",
+          "when": "false"
+        },
+        {
+          "command": "cursorAgent.plugins.updateMarketplace",
+          "when": "false"
+        },
+        {
+          "command": "cursorAgent.plugins.removeDir",
+          "when": "false"
+        },
+        {
+          "command": "cursorAgent.plugins.reveal",
+          "when": "false"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "cursorAgent.mcp.login",
+          "when": "view == cursorAgent.mcp && viewItem =~ /^mcpServer.*\\.auth/",
+          "group": "inline@1"
+        },
+        {
+          "command": "cursorAgent.mcp.enable",
+          "when": "view == cursorAgent.mcp && viewItem =~ /^mcpServer\\.disabled/",
+          "group": "inline@2"
+        },
+        {
+          "command": "cursorAgent.mcp.disable",
+          "when": "view == cursorAgent.mcp && viewItem =~ /^mcpServer\\.enabled/",
+          "group": "inline@2"
+        },
+        {
+          "command": "cursorAgent.mcp.edit",
+          "when": "view == cursorAgent.mcp && viewItem =~ /^mcpServer/",
+          "group": "inline@3"
+        },
+        {
+          "command": "cursorAgent.mcp.enable",
+          "when": "view == cursorAgent.mcp && viewItem =~ /^mcpServer\\.disabled/",
+          "group": "1_state@1"
+        },
+        {
+          "command": "cursorAgent.mcp.disable",
+          "when": "view == cursorAgent.mcp && viewItem =~ /^mcpServer\\.enabled/",
+          "group": "1_state@1"
+        },
+        {
+          "command": "cursorAgent.mcp.login",
+          "when": "view == cursorAgent.mcp && viewItem =~ /^mcpServer/",
+          "group": "1_state@2"
+        },
+        {
+          "command": "cursorAgent.mcp.edit",
+          "when": "view == cursorAgent.mcp && viewItem =~ /^mcpServer/",
+          "group": "2_edit@1"
+        },
+        {
+          "command": "cursorAgent.mcp.openConfig",
+          "when": "view == cursorAgent.mcp && viewItem =~ /^mcpServer/",
+          "group": "2_edit@2"
+        },
+        {
+          "command": "cursorAgent.mcp.remove",
+          "when": "view == cursorAgent.mcp && viewItem =~ /^mcpServer/",
+          "group": "3_remove@1"
+        },
+        {
+          "command": "cursorAgent.mcp.add",
+          "when": "view == cursorAgent.mcp && viewItem == section.servers",
+          "group": "inline@1"
+        },
+        {
+          "command": "cursorAgent.plugins.addMarketplace",
+          "when": "view == cursorAgent.mcp && viewItem == group.marketplaces",
+          "group": "inline@1"
+        },
+        {
+          "command": "cursorAgent.plugins.addDir",
+          "when": "view == cursorAgent.mcp && viewItem == group.pluginDirs",
+          "group": "inline@1"
+        },
+        {
+          "command": "cursorAgent.plugins.updateMarketplace",
+          "when": "view == cursorAgent.mcp && viewItem == marketplace",
+          "group": "inline@1"
+        },
+        {
+          "command": "cursorAgent.plugins.removeMarketplace",
+          "when": "view == cursorAgent.mcp && viewItem == marketplace",
+          "group": "inline@2"
+        },
+        {
+          "command": "cursorAgent.plugins.reveal",
+          "when": "view == cursorAgent.mcp && viewItem =~ /^(plugin|pluginDir)$/",
+          "group": "inline@1"
+        },
+        {
+          "command": "cursorAgent.plugins.removeDir",
+          "when": "view == cursorAgent.mcp && viewItem == pluginDir",
+          "group": "inline@2"
         }
       ]
     },
@@ -386,6 +634,19 @@
           "type": "boolean",
           "default": true,
           "description": "Show an \"Add to Cursor (Ctrl+I)\" CodeLens above the editor selection."
+        },
+        "cursorAgent.approveMcps": {
+          "type": "boolean",
+          "default": false,
+          "description": "Pass --approve-mcps to every run so configured MCP servers load without an approval prompt. Toggle it in the MCP & Plugins view."
+        },
+        "cursorAgent.pluginDirs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Local plugin folders passed to every run with --plugin-dir."
         }
       }
     }

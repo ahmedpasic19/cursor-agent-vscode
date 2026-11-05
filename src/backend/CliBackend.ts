@@ -18,6 +18,8 @@ export function buildArgs(opts: RunOptions, caps?: CliCapabilities): string[] {
   if (opts.model) args.push('--model', opts.model);
   if (opts.resumeSessionId) args.push('--resume', opts.resumeSessionId);
   if (has('--add-dir')) for (const d of opts.addDirs ?? []) args.push('--add-dir', d);
+  if (opts.approveMcps && has('--approve-mcps')) args.push('--approve-mcps');
+  if (has('--plugin-dir')) for (const d of opts.pluginDirs ?? []) args.push('--plugin-dir', d);
   if (opts.worktreeName && has('--worktree')) args.push('--worktree', opts.worktreeName);
   if (opts.mode === 'agent') args.push('--force');
   else if (has('--mode')) args.push('--mode', opts.mode);
