@@ -10,6 +10,7 @@ import type { ContextChip } from '../../src/shared/protocol';
 import { checkpointTests } from './checkpoints';
 import { multiTabTests } from './multitab';
 import { polishTests } from './polish';
+import { sdkBackendTests } from './sdkBackend';
 import { assert, results, sleep, test, waitFor } from './helpers';
 
 function label(c: ContextChip): string {
@@ -160,6 +161,7 @@ export async function run(): Promise<void> {
 
   await checkpointTests(api, `${process.env.FAKE_RECORD}.actions.json`);
   await polishTests(api);
+  await sdkBackendTests(api);
   await multiTabTests(api);
 
   const failed = results.filter((r) => !r.ok);

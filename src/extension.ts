@@ -13,6 +13,7 @@ import type { HostMessage, WebviewMessage } from './shared/protocol';
 import { SessionManager } from './session/SessionManager';
 import { StatusBar } from './statusBar';
 import { HistoryStore } from './storage/HistoryStore';
+import { PINNED_SDK_VERSION, SdkService } from './sdk/SdkService';
 import { WebviewBridge } from './webview/WebviewBridge';
 
 let manager: SessionManager | undefined;
@@ -25,6 +26,7 @@ export interface CursorAgentApi {
   changes: ChangesController;
   history: HistoryStore;
   code: CodeActions;
+  sdk: SdkService;
   cliReady(): Promise<unknown>;
 }
 
@@ -58,12 +60,73 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
       set: (v, flags) => void context.globalState.update(`caps:${v}`, flags),
     },
     (status) => {
+      if (useSdk()) return;
       statusBar.setCli(status);
-      bridge.post({ type: 'cli/status', cli: status });
+      bridge.post({ type: 'cli/status', cli: { ...status, backend: 'cli' } });
     },
   );
 
   const bridge = new WebviewBridge(context.extensionUri, (msg) => handle(msg), log);
+
+  // ---- SDK backend (Phase 7): optional, selected by cursorAgent.backend ----
+  const SDK_KEY = 'cursorAgent.sdkApiKey';
+  const sdkDir = vscode.Uri.joinPath(context.globalStorageUri, 'sdk').fsPath;
+  const sdk = new SdkService({
+    sdkDir,
+    workerPath: vscode.Uri.joinPath(context.extensionUri, 'dist', 'sdk-worker.cjs').fsPath,
+    nodePath: () => cfg().get<string>('sdk.nodePath', '') || 'node',
+    defaultModel: () => cfg().get<string>('defaultModel', '') || 'auto',
+    getApiKey: async () => (await context.secrets.get(SDK_KEY)) || process.env.CURSOR_API_KEY || undefined,
+    log,
+    onStatus: (s) => {
+      if (useSdk()) {
+        statusBar.setCli(s);
+        bridge.post({ type: 'cli/status', cli: s });
+      }
+    },
+  });
+  const useSdk = () => cfg().get<string>('backend', 'cli') === 'sdk';
+  const activeStatus = () => (useSdk() ? sdk.status : cli.status);
+  const refreshBackend = () => (useSdk() ? sdk.refresh() : cli.refresh());
+
+  const setSdkKey = async () => {
+    const key = await vscode.window.showInputBox({
+      title: 'Cursor SDK API key',
+      prompt: 'Create one in the Cursor dashboard (Integrations → API keys). Stored in VS Code Secret Storage. The SDK backend is billed by usage.',
+      password: true,
+      ignoreFocusOut: true,
+      validateInput: (v) => (v.trim().length < 10 ? 'That does not look like an API key.' : undefined),
+    });
+    if (!key) return;
+    await context.secrets.store(SDK_KEY, key.trim());
+    void sdk.refresh();
+  };
+
+  const installSdk = async () => {
+    const task = new vscode.Task(
+      { type: 'cursorAgent', task: 'install-sdk' },
+      vscode.TaskScope.Global,
+      `Install @cursor/sdk ${PINNED_SDK_VERSION}`,
+      'Cursor Agent',
+      new vscode.ProcessExecution(process.platform === 'win32' ? 'npm.cmd' : 'npm', [
+        'install',
+        '--prefix',
+        sdkDir,
+        `@cursor/sdk@${PINNED_SDK_VERSION}`,
+        '--no-audit',
+        '--no-fund',
+      ]),
+    );
+    await vscode.workspace.fs.createDirectory(vscode.Uri.file(sdkDir));
+    const exec = await vscode.tasks.executeTask(task);
+    const sub = vscode.tasks.onDidEndTaskProcess((e) => {
+      if (e.execution !== exec) return;
+      sub.dispose();
+      if (e.exitCode === 0) void vscode.window.showInformationMessage(`@cursor/sdk ${PINNED_SDK_VERSION} installed.`);
+      else void vscode.window.showErrorMessage(`Installing @cursor/sdk failed (exit code ${e.exitCode}). See the task terminal.`);
+      void sdk.refresh();
+    });
+  };
 
   const post = (m: HostMessage) => {
     bridge.post(m);
@@ -71,7 +134,7 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
   };
 
   const mgr: SessionManager = new SessionManager({
-    getBackend: () => cli.backend(),
+    getBackend: () => (useSdk() ? sdk.backend() : cli.backend()),
     getRunSettings: () => ({
       partialOutput: cfg().get<boolean>('streamPartialOutput', true),
       extraArgs: cfg().get<string[]>('extraArgs', []),
@@ -127,7 +190,7 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
       type: 'state/full',
       tabs: mgr.tabs.map((t) => t.snapshot()),
       activeTabId: mgr.activeTabId,
-      cli: cli.status,
+      cli: activeStatus(),
       settings: { defaultMode: cfg().get<Mode>('defaultMode', 'agent') },
     });
     bridge.flushPending();
@@ -135,7 +198,7 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
   };
 
   const sendModels = async (force = false) => {
-    const fromCli = await cli.models(force);
+    const fromCli = useSdk() ? await sdk.models(force) : await cli.models(force);
     if (fromCli.length) {
       bridge.post({ type: 'models/list', models: fromCli, source: 'cli' });
     } else {
@@ -285,7 +348,16 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
         login();
         break;
       case 'cli/refresh':
-        void cli.refresh();
+        void refreshBackend().then(() => sendModels(true));
+        break;
+      case 'sdk/install':
+        void installSdk();
+        break;
+      case 'sdk/setKey':
+        void setSdkKey();
+        break;
+      case 'backend/switch':
+        void cfg().update('backend', msg.backend, vscode.ConfigurationTarget.Global);
         break;
       case 'settings/open':
         void vscode.commands.executeCommand('workbench.action.openSettings', msg.query ?? 'cursorAgent');
@@ -344,7 +416,22 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     }),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('cursorAgent.cliPath')) void cli.refresh();
+      if (e.affectsConfiguration('cursorAgent.backend') || e.affectsConfiguration('cursorAgent.sdk.nodePath')) {
+        log(`[backend] switched to ${useSdk() ? 'sdk' : 'cli'}`);
+        void refreshBackend().then((s) => {
+          statusBar.setCli(s);
+          bridge.post({ type: 'cli/status', cli: s });
+          void sendModels(true);
+        });
+      }
     }),
+    vscode.commands.registerCommand('cursorAgent.setSdkApiKey', setSdkKey),
+    vscode.commands.registerCommand('cursorAgent.clearSdkApiKey', async () => {
+      await context.secrets.delete(SDK_KEY);
+      void sdk.refresh();
+      void vscode.window.showInformationMessage('Cursor SDK API key removed.');
+    }),
+    vscode.commands.registerCommand('cursorAgent.installSdk', installSdk),
     fileIndex,
     code,
     { dispose: () => mgr.stopAll() },
@@ -360,8 +447,8 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
   });
 
   log('Cursor Agent activated');
-  const ready = cli.refresh();
-  return { manager: mgr, changes, history: store, code, cliReady: () => ready };
+  const ready = useSdk() ? Promise.all([cli.refresh(), sdk.refresh()]) : cli.refresh();
+  return { manager: mgr, changes, history: store, code, sdk, cliReady: () => ready };
 }
 
 export function deactivate(): void {

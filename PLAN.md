@@ -508,6 +508,12 @@ Work through the phases in order. Do not start a phase until the previous phase'
 
 - Implement `SdkBackend` using `@cursor/sdk`, run in a separate Node child process. The extension host's Node version may not meet the SDK's Node 22.13+ requirement, and the native binaries are safer out-of-process.
 - Add the setting `cursorAgent.backend: "cli" | "sdk"`. The SDK backend requires an API key stored in `SecretStorage`.
+- **As built (see `docs/SDK_NOTES.md`):**
+  - Pinned to @cursor/sdk 1.3.1, installed on demand with "Cursor Agent: Install SDK Backend" (npm into global storage). It isn't bundled because of its native binaries.
+  - One worker process per run (`dist/sdk-worker.cjs`), started with `cursorAgent.sdk.nodePath` (Node 22.13+).
+  - The SDK has no Ask mode, so Ask runs as Agent mode with an SDK-enforced read-only tool allowlist.
+  - The local SDK requires a model; it falls back to `defaultModel`, then `auto`.
+  - Worktrees aren't available with the SDK backend.
 
 ---
 

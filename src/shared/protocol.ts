@@ -118,7 +118,9 @@ export const TabSnapshotSchema = z.object({
 export type TabSnapshot = z.infer<typeof TabSnapshotSchema>;
 
 export const CliStatusSchema = z.object({
-  state: z.enum(['checking', 'ready', 'notFound', 'notLoggedIn', 'error']),
+  state: z.enum(['checking', 'ready', 'notFound', 'notLoggedIn', 'error', 'sdkNotInstalled', 'noApiKey']),
+  /** Which backend this status describes (cursorAgent.backend). */
+  backend: z.enum(['cli', 'sdk']).optional(),
   version: z.string().optional(),
   email: z.string().optional(),
   message: z.string().optional(),
@@ -244,5 +246,8 @@ export const WebviewMessageSchema = z.discriminatedUnion('type', [
   /** Per-tab "run in a git worktree" toggle (CLI -w). */
   z.object({ type: z.literal('tab/setWorktree'), tabId: z.string(), enabled: z.boolean() }),
   z.object({ type: z.literal('worktree/open'), path: z.string() }),
+  z.object({ type: z.literal('sdk/install') }),
+  z.object({ type: z.literal('sdk/setKey') }),
+  z.object({ type: z.literal('backend/switch'), backend: z.enum(['cli', 'sdk']) }),
 ]);
 export type WebviewMessage = z.infer<typeof WebviewMessageSchema>;

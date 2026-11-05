@@ -2,7 +2,7 @@
   "name": "cursor-agent-vscode",
   "displayName": "Cursor Agent",
   "description": "Cursor's agent in a VS Code sidebar chat (personal use).",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "publisher": "local",
   "private": true,
   "license": "UNLICENSED",
@@ -18,6 +18,7 @@
   "main": "./dist/extension.cjs",
   "files": [
     "dist/extension.cjs",
+    "dist/sdk-worker.cjs",
     "dist/webview/index.js",
     "dist/webview/index.css",
     "media/icon.svg",
@@ -103,6 +104,21 @@
         "title": "Show Chat History",
         "category": "Cursor Agent",
         "icon": "$(history)"
+      },
+      {
+        "command": "cursorAgent.installSdk",
+        "title": "Install SDK Backend",
+        "category": "Cursor Agent"
+      },
+      {
+        "command": "cursorAgent.setSdkApiKey",
+        "title": "Set SDK API Key",
+        "category": "Cursor Agent"
+      },
+      {
+        "command": "cursorAgent.clearSdkApiKey",
+        "title": "Clear SDK API Key",
+        "category": "Cursor Agent"
       }
     ],
     "menus": {
@@ -197,6 +213,24 @@
           "type": "string",
           "default": "",
           "description": "Path to the cursor-agent CLI (or its node.exe). Empty = auto-detect."
+        },
+        "cursorAgent.backend": {
+          "type": "string",
+          "enum": [
+            "cli",
+            "sdk"
+          ],
+          "enumDescriptions": [
+            "cursor-agent CLI with your Cursor subscription login (default).",
+            "@cursor/sdk with an API key, billed by usage. Needs Node 22.13+ and a one-time install."
+          ],
+          "default": "cli",
+          "description": "Which agent runtime to use."
+        },
+        "cursorAgent.sdk.nodePath": {
+          "type": "string",
+          "default": "",
+          "description": "Node executable for the SDK backend (needs 22.13+). Empty = `node` on PATH."
         },
         "cursorAgent.defaultMode": {
           "type": "string",

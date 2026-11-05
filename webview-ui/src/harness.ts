@@ -369,7 +369,7 @@ function renderPanel() {
   const h = document.createElement('h3');
   h.textContent = 'CLI state';
   panel.append(h);
-  for (const state of ['ready', 'checking', 'notFound', 'notLoggedIn', 'error'] as const) {
+  for (const state of ['ready', 'checking', 'notFound', 'notLoggedIn', 'error', 'sdkNotInstalled', 'noApiKey'] as const) {
     const b = document.createElement('button');
     b.textContent = state;
     if (cli.state === state) b.className = 'active';
@@ -377,6 +377,7 @@ function renderPanel() {
       cli = {
         ...cli,
         state,
+        backend: state === 'sdkNotInstalled' || state === 'noApiKey' ? 'sdk' : 'cli',
         message: state === 'error' ? 'Could not run cursor-agent --version' : state === 'notFound' ? undefined : cli.message,
       };
       post({ type: 'cli/status', cli });

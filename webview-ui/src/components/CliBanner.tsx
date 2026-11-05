@@ -4,7 +4,8 @@ import { send } from '../vscode';
 /** Top-of-panel banner for CLI problems: what's wrong and what to do (PLAN.md §5.9). */
 export function CliBanner({ cli }: { cli: CliStatus }) {
   if (cli.state === 'ready') return null;
-  if (cli.state === 'checking') return <div className="cli-checking muted">Checking Cursor Agent CLI…</div>;
+  if (cli.state === 'checking')
+    return <div className="cli-checking muted">{cli.backend === 'sdk' ? 'Checking the SDK backend…' : 'Checking Cursor Agent CLI…'}</div>;
 
   if (cli.state === 'notFound') {
     return (
@@ -21,6 +22,49 @@ export function CliBanner({ cli }: { cli: CliStatus }) {
           </button>
           <button className="btn secondary" onClick={() => send({ type: 'cli/refresh' })}>
             Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (cli.state === 'sdkNotInstalled') {
+    return (
+      <div className="error-banner top" role="alert">
+        <div className="error-title">SDK backend: @cursor/sdk not installed</div>
+        <div className="error-message">
+          The SDK backend runs @cursor/sdk in a separate Node process. Install it once (npm, into the extension's storage), or
+          switch back to the CLI backend.
+        </div>
+        {cli.message && <div className="error-message muted">{cli.message}</div>}
+        <div className="banner-actions">
+          <button className="btn primary" onClick={() => send({ type: 'sdk/install' })}>
+            Install SDK
+          </button>
+          <button className="btn secondary" onClick={() => send({ type: 'cli/refresh' })}>
+            Retry
+          </button>
+          <button className="link" onClick={() => send({ type: 'backend/switch', backend: 'cli' })}>
+            Use the CLI instead
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (cli.state === 'noApiKey') {
+    return (
+      <div className="error-banner top" role="alert">
+        <div className="error-title">SDK backend: API key needed</div>
+        <div className="error-message">
+          The SDK authenticates with a Cursor API key and is billed by usage (the CLI uses your subscription login instead).
+        </div>
+        <div className="banner-actions">
+          <button className="btn primary" onClick={() => send({ type: 'sdk/setKey' })}>
+            Set API key
+          </button>
+          <button className="link" onClick={() => send({ type: 'backend/switch', backend: 'cli' })}>
+            Use the CLI instead
           </button>
         </div>
       </div>
@@ -46,7 +90,7 @@ export function CliBanner({ cli }: { cli: CliStatus }) {
 
   return (
     <div className="error-banner top" role="alert">
-      <div className="error-title">Cursor Agent CLI problem</div>
+      <div className="error-title">{cli.backend === 'sdk' ? 'SDK backend problem' : 'Cursor Agent CLI problem'}</div>
       {cli.message && <div className="error-message">{cli.message}</div>}
       <div className="banner-actions">
         <button className="btn secondary" onClick={() => send({ type: 'cli/refresh' })}>

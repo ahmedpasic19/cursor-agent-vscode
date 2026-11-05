@@ -3,6 +3,12 @@ import { send } from '../vscode';
 
 const AUTH_RE = /not (logged|signed) in|unauthenticated|unauthori[sz]ed|please (log|sign) ?in|cursor-agent login|authentication (required|failed)/i;
 
+const SDK_KEY_RE = /SDK API key|AuthenticationError|Set SDK API Key/i;
+
+export function looksLikeSdkKeyError(outcome?: RunOutcome): boolean {
+  return !!outcome && SDK_KEY_RE.test([outcome.message ?? '', ...outcome.stderrTail].join('\n'));
+}
+
 export function looksLikeAuthError(outcome?: RunOutcome): boolean {
   if (!outcome) return false;
   return AUTH_RE.test([outcome.message ?? '', ...outcome.stderrTail].join('\n'));
@@ -22,9 +28,10 @@ interface Props {
 
 /** Failed run: what went wrong, the stderr tail, and what to do next (PLAN.md §5.5). */
 export function ErrorBanner({ tabId, status, outcome, canRetry }: Props) {
-  const auth = looksLikeAuthError(outcome);
+  const sdkKey = looksLikeSdkKeyError(outcome);
+  const auth = !sdkKey && looksLikeAuthError(outcome);
   const tail = outcome?.stderrTail.filter((l) => l.trim()) ?? [];
-  const title = auth ? 'Not logged in to Cursor' : status === 'timeout' ? 'Run timed out' : 'Run failed';
+  const title = sdkKey ? 'SDK API key rejected' : auth ? 'Not logged in to Cursor' : status === 'timeout' ? 'Run timed out' : 'Run failed';
   const exit = outcome?.exitCode !== null && outcome?.exitCode !== undefined ? ` (exit code ${outcome.exitCode})` : '';
   return (
     <div className="error-banner" role="alert">
@@ -40,6 +47,11 @@ export function ErrorBanner({ tabId, status, outcome, canRetry }: Props) {
         </details>
       )}
       <div className="banner-actions">
+        {sdkKey && (
+          <button className="btn primary" onClick={() => send({ type: 'sdk/setKey' })}>
+            Set API key
+          </button>
+        )}
         {auth && (
           <button className="btn primary" onClick={() => send({ type: 'auth/login' })}>
             Run cursor-agent login

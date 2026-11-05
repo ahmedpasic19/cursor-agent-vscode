@@ -26,20 +26,21 @@ export class StatusBar implements vscode.Disposable {
 
   private render(): void {
     const { state } = this.cli;
-    const problem = state === 'notFound' || state === 'notLoggedIn' || state === 'error';
+    const problem = state === 'notFound' || state === 'notLoggedIn' || state === 'error' || state === 'sdkNotInstalled' || state === 'noApiKey';
+    const label = this.cli.backend === 'sdk' ? 'Cursor SDK' : 'Cursor';
     if (this.running > 0) {
-      this.item.text = `$(sync~spin) Cursor: ● ${this.running}`;
+      this.item.text = `$(sync~spin) ${label}: ● ${this.running}`;
     } else if (problem) {
-      this.item.text = '$(warning) Cursor';
+      this.item.text = `$(warning) ${label}`;
     } else if (state === 'checking') {
-      this.item.text = 'Cursor: ○';
+      this.item.text = `${label}: ○`;
     } else {
-      this.item.text = 'Cursor: ●';
+      this.item.text = `${label}: ●`;
     }
     this.item.backgroundColor = problem ? new vscode.ThemeColor('statusBarItem.warningBackground') : undefined;
     const lines = [
       state === 'ready'
-        ? `Cursor Agent ready${this.cli.version ? ` (CLI ${this.cli.version})` : ''}${this.cli.email ? ` — ${this.cli.email}` : ''}`
+        ? `Cursor Agent ready${this.cli.version ? ` (${this.cli.backend === 'sdk' ? this.cli.version : `CLI ${this.cli.version}`})` : ''}${this.cli.email ? ` — ${this.cli.email}` : ''}`
         : state === 'checking'
           ? 'Checking Cursor Agent CLI…'
           : (this.cli.message ?? `Cursor Agent: ${state}`),
