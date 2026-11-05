@@ -1,0 +1,137 @@
+/*
+ * Shared design tokens for the chat and Sessions webviews (docs/UI_REDESIGN_PLAN.md §1).
+ * Claude Code–style surfaces, borders and radii, derived from VS Code theme variables so light and
+ * high-contrast themes keep working. Only the accent and the mascot say "Cursor".
+ */
+:root {
+  --ca-bg: var(--vscode-sideBar-background, var(--vscode-editor-background));
+  --ca-text: var(--vscode-foreground);
+  --ca-muted: var(--vscode-descriptionForeground);
+  --ca-faint: color-mix(in srgb, var(--vscode-foreground) 45%, transparent);
+  --ca-surface: color-mix(in srgb, var(--vscode-foreground) 4%, var(--ca-bg));
+  --ca-surface-2: color-mix(in srgb, var(--vscode-foreground) 7%, var(--ca-bg));
+  --ca-hover: color-mix(in srgb, var(--vscode-foreground) 8%, transparent);
+  --ca-active: color-mix(in srgb, var(--vscode-foreground) 12%, transparent);
+  --ca-border: color-mix(in srgb, var(--vscode-foreground) 13%, transparent);
+  --ca-border-strong: color-mix(in srgb, var(--vscode-foreground) 26%, transparent);
+  --ca-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.25);
+  --ca-code-bg: color-mix(in srgb, #000 22%, var(--ca-bg));
+
+  /* Cursor accent: neutral off-white on dark themes, near-black on light themes. */
+  --ca-accent: #e9e7e3;
+  --ca-accent-ink: #161616;
+  --ca-ok: var(--vscode-testing-iconPassed, #3fb950);
+  --ca-err: var(--vscode-errorForeground, #f14c4c);
+  --ca-warn: var(--vscode-editorWarning-foreground, #cca700);
+
+  /* Mascot palette (three-shade cube, like the Cursor mark). */
+  --mascot-top: #f1efea;
+  --mascot-left: #a8a49c;
+  --mascot-right: #5d5a54;
+  --mascot-ink: #121212;
+
+  --ca-radius-sm: 4px;
+  --ca-radius: 6px;
+  --ca-radius-lg: 10px;
+  --ca-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
+}
+body.vscode-light {
+  --ca-accent: #262626;
+  --ca-accent-ink: #ffffff;
+  --ca-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.1);
+  --ca-code-bg: color-mix(in srgb, #000 4%, var(--ca-bg));
+  --mascot-top: #c9c6bf;
+  --mascot-left: #7b7770;
+  --mascot-right: #3d3b37;
+  --mascot-ink: #0d0d0d;
+}
+body.vscode-high-contrast {
+  --ca-border: var(--vscode-contrastBorder, #6fc3df);
+  --ca-border-strong: var(--vscode-contrastActiveBorder, #f38518);
+  --ca-shadow: none;
+}
+
+/* ---------- mascot ---------- */
+.mascot {
+  display: block;
+  image-rendering: pixelated;
+  shape-rendering: crispEdges;
+  overflow: visible;
+}
+.mascot .m-top {
+  fill: var(--mascot-top);
+}
+.mascot .m-left {
+  fill: var(--mascot-left);
+}
+.mascot .m-right {
+  fill: var(--mascot-right);
+}
+.mascot .m-glint {
+  fill: var(--mascot-top);
+}
+.mascot .m-ink {
+  fill: var(--mascot-ink);
+}
+.mascot .m-body,
+.mascot .m-eyes,
+.mascot .m-leg {
+  transform-box: fill-box;
+}
+.mascot .m-eyes {
+  transform-origin: center;
+  animation: mascot-blink 4.2s infinite;
+}
+.mascot.working .m-body {
+  animation: mascot-bob 0.6s steps(2, jump-none) infinite;
+}
+.mascot.working .m-leg.l {
+  animation: mascot-step 0.6s steps(1) infinite;
+}
+.mascot.working .m-leg.r {
+  animation: mascot-step 0.6s steps(1) infinite 0.3s;
+}
+.mascot.hop {
+  animation: mascot-hop 0.5s ease-out 1;
+}
+@keyframes mascot-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.15);
+  }
+}
+@keyframes mascot-bob {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-1px);
+  }
+}
+@keyframes mascot-step {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1px);
+  }
+}
+@keyframes mascot-hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mascot *,
+  .mascot {
+    animation: none !important;
+  }
+}

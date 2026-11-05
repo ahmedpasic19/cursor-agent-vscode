@@ -226,12 +226,15 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     sessionsTimer = undefined;
     for (const t of mgr.tabs) index.update(t);
     const live = new Map(mgr.tabs.map((t) => [t.id, t]));
-    sessionsBridge.post({
-      type: 'sessions/state',
+    const state = {
+      type: 'sessions/state' as const,
       rows: index.rows(live, mgr.unread, (id) => groups.groupOf(id)),
       groups: groups.groups,
       activeId: mgr.activeTabId,
-    });
+    };
+    sessionsBridge.post(state);
+    // The chat header's history dropdown lists the same rows.
+    bridge.post(state);
   };
 
   const pushAccount = async () => {
@@ -353,9 +356,11 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     if (err) void vscode.window.showErrorMessage(`Cursor Agent: logout failed — ${err}`);
   };
 
+  /** Clock button, /history and "Cursor: Show Sessions": the dropdown in the chat panel. */
   const showSessions = async () => {
-    await sessionsBridge.reveal();
-    sessionsBridge.post({ type: 'sessions/focusSearch' });
+    await bridge.reveal();
+    pushSessions();
+    bridge.post({ type: 'history/open' });
   };
 
   function handleSessions(msg: WebviewMessage): void {
@@ -485,6 +490,19 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     switch (msg.type) {
       case 'ready':
         sendFullState();
+        pushSessions();
+        break;
+      case 'session/open':
+        if (!openSession(msg.id)) {
+          bridge.post({ type: 'notice', level: 'error', text: 'That chat could not be loaded.' });
+          index.remove(msg.id);
+          pushSessions();
+          break;
+        }
+        bridge.post({ type: 'composer/focus' });
+        break;
+      case 'context/add':
+        void vscode.commands.executeCommand(msg.what === 'selection' ? 'cursorAgent.addSelectionToChat' : 'cursorAgent.addProblemsToChat');
         break;
       case 'tab/new':
         mgr.newTab(true);
@@ -493,7 +511,10 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
         mgr.renameTab(msg.tabId, msg.title);
         break;
       case 'sessions/show':
-        void showSessions();
+        bridge.post({ type: 'history/open' });
+        break;
+      case 'sessions/reveal':
+        void sessionsBridge.reveal().then(() => sessionsBridge.post({ type: 'sessions/focusSearch' }));
         break;
       case 'run/resume':
         mgr.resume(msg.tabId);
@@ -625,6 +646,9 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     }),
     vscode.commands.registerCommand('cursorAgent.showHistory', showSessions),
     vscode.commands.registerCommand('cursorAgent.focusSessions', () => sessionsBridge.reveal()),
+    vscode.commands.registerCommand('cursorAgent.openSettings', () =>
+      vscode.commands.executeCommand('workbench.action.openSettings', 'cursorAgent'),
+    ),
     vscode.commands.registerCommand('cursorAgent.newGroup', newGroup),
     vscode.commands.registerCommand('cursorAgent.refreshAccount', () => {
       void refreshBackend()

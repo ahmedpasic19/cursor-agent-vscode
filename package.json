@@ -2,8 +2,9 @@
   "name": "cursor-agent-vscode",
   "displayName": "Cursor Agent",
   "description": "Cursor's agent in a VS Code sidebar chat (personal use).",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "publisher": "local",
+  "icon": "media/logo.png",
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
@@ -24,6 +25,7 @@
     "dist/webview/sessions.js",
     "dist/webview/sessions.css",
     "media/icon.svg",
+    "media/logo.png",
     "README.md"
   ],
   "activationEvents": [
@@ -71,6 +73,12 @@
       ]
     },
     "commands": [
+      {
+        "command": "cursorAgent.openSettings",
+        "title": "Open Settings",
+        "category": "Cursor Agent",
+        "icon": "$(gear)"
+      },
       {
         "command": "cursorAgent.newChat",
         "title": "New Chat",
@@ -178,6 +186,11 @@
           "command": "cursorAgent.refreshAccount",
           "when": "view == cursorAgent.sessions",
           "group": "navigation@3"
+        },
+        {
+          "command": "cursorAgent.openSettings",
+          "when": "view == cursorAgent.sessions",
+          "group": "navigation@4"
         }
       ],
       "editor/context": [
@@ -378,6 +391,7 @@
     "test:integration": "npm run build && node test/integration/runTest.mjs"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@types/markdown-it": "^14.2.0",
     "@types/node": "^22.20.5",
     "@types/react": "^18.3.31",

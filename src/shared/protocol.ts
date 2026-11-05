@@ -236,6 +236,8 @@ export const HostMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('account/state'), account: AccountInfoSchema, usage: UsageSummarySchema }),
   /** Focus the Session Manager search box. */
   z.object({ type: z.literal('sessions/focusSearch') }),
+  /** Open the chat panel's history dropdown (clock button, /history, Cursor: Show Sessions). */
+  z.object({ type: z.literal('history/open') }),
   z.object({ type: z.literal('chips/updated'), tabId: z.string(), chips: z.array(ContextChipSchema) }),
   z.object({ type: z.literal('mention/results'), requestId: z.number(), items: z.array(MentionItemSchema) }),
   z.object({ type: z.literal('models/list'), models: z.array(ModelOptionSchema), source: z.enum(['cli', 'setting']) }),
@@ -264,6 +266,8 @@ export const WebviewMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('tab/rename'), tabId: z.string(), title: z.string().min(1).max(200) }),
   /** Chat header clock / `/history`: reveal the Session Manager. */
   z.object({ type: z.literal('sessions/show') }),
+  /** History dropdown "Manage sessions…": reveal the Session Manager on the left. */
+  z.object({ type: z.literal('sessions/reveal') }),
   // Sessions view:
   z.object({ type: z.literal('session/open'), id: z.string() }),
   z.object({ type: z.literal('session/delete'), id: z.string() }),
@@ -322,6 +326,8 @@ export const WebviewMessageSchema = z.discriminatedUnion('type', [
   /** Per-tab "run in a git worktree" toggle (CLI -w). */
   z.object({ type: z.literal('tab/setWorktree'), tabId: z.string(), enabled: z.boolean() }),
   z.object({ type: z.literal('worktree/open'), path: z.string() }),
+  /** Composer "+" menu: run the matching "Add … to Chat" command. */
+  z.object({ type: z.literal('context/add'), what: z.enum(['selection', 'problems']) }),
   z.object({ type: z.literal('sdk/install') }),
   z.object({ type: z.literal('sdk/setKey') }),
   z.object({ type: z.literal('backend/switch'), backend: z.enum(['cli', 'sdk']) }),

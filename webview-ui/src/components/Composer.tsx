@@ -1,11 +1,13 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { Mode } from '../../../src/shared/events';
 import type { ContextChip, ModelOption } from '../../../src/shared/protocol';
+import { ArrowUpIcon, BranchIcon, FileIcon, PlusIcon, SlashIcon, StopIcon, WarnIcon } from '../sessions/icons';
 import { useStore } from '../state/store';
 import { send } from '../vscode';
 import { ContextChips } from './ContextChips';
 import { ModelSelect } from './ModelSelect';
 import { MODES, ModeSelect, nextMode } from './ModeSelect';
+import { OptionRow, Popover } from './Popover';
 
 interface Props {
   tabId?: string;
@@ -29,9 +31,9 @@ interface Props {
 }
 
 const PLACEHOLDER: Record<Mode, string> = {
-  agent: 'Tell the agent what to do… @ to add files, / for commands',
-  ask: 'Ask a question — nothing will be changed… @ to add files',
-  plan: 'Describe what to plan — nothing will be changed… @ to add files',
+  agent: 'Ask Cursor to build, fix or explain anything',
+  ask: 'Ask a question. Nothing will be changed',
+  plan: 'Describe what to plan. Nothing will be changed',
 };
 
 interface SlashCommand {
@@ -44,7 +46,8 @@ const SLASH: SlashCommand[] = [
   { name: 'clear', hint: 'Start a new session in this tab' },
   { name: 'model', args: '[id]', hint: 'Pick or set the model' },
   { name: 'mode', args: '[agent|ask|plan]', hint: 'Set or cycle the mode' },
-  { name: 'history', hint: 'Show sessions' },
+  { name: 'history', hint: 'Show past sessions' },
+  { name: 'help', hint: 'Keyboard shortcuts and tips' },
 ];
 
 type Popup =
@@ -66,6 +69,10 @@ export function Composer(props: Props) {
   const [popup, setPopup] = useState<Popup>();
   const [active, setActive] = useState(0);
   const [modelOpen, setModelOpen] = useState(0);
+  const [attachOpen, setAttachOpen] = useState(false);
+  const closeAttach = useCallback(() => setAttachOpen(false), []);
+  const openHistory = useStore((s) => s.openHistory);
+  const openHelp = useStore((s) => s.openHelp);
   const ref = useRef<HTMLTextAreaElement>(null);
   const mention = useStore((s) => s.mention);
   const showNotice = useStore((s) => s.showNotice);
@@ -170,7 +177,11 @@ export function Composer(props: Props) {
         return true;
       }
       case 'history':
-        send({ type: 'sessions/show' });
+        openHistory();
+        clear();
+        return true;
+      case 'help':
+        openHelp();
         clear();
         return true;
       default:
@@ -234,104 +245,175 @@ export function Composer(props: Props) {
     }
   };
 
+  /** Insert a trigger character at the caret and open its popup (the + and / buttons). */
+  const insertTrigger = (ch: '@' | '/') => {
+    const el = ref.current;
+    if (ch === '/') {
+      setText('/');
+      setPopup({ kind: 'slash', query: '' });
+      setActive(0);
+      setTimeout(() => {
+        el?.focus();
+        el?.setSelectionRange(1, 1);
+      }, 0);
+      return;
+    }
+    const caret = el?.selectionStart ?? text.length;
+    const pre = text.slice(0, caret);
+    const ins = pre && !/\s$/.test(pre) ? ' @' : '@';
+    const next = pre + ins + text.slice(caret);
+    setText(next);
+    detectPopup(next, caret + ins.length);
+    setTimeout(() => {
+      el?.focus();
+      el?.setSelectionRange(caret + ins.length, caret + ins.length);
+    }, 0);
+  };
+
+  const canSend = !!text.trim() && !disabled;
+
   return (
-    <div className={`composer mode-${mode}`}>
+    <div className="composer">
       {popup && (
-        <div className="popup composer-popup" role="listbox">
-          {popup.kind === 'slash' &&
-            slashOptions.map((c, i) => (
-              <div
-                key={c.name}
-                role="option"
-                aria-selected={i === active}
-                className={`popup-item${i === active ? ' active' : ''}`}
-                onMouseEnter={() => setActive(i)}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  pickSlash(i);
-                }}
-              >
-                <span className="mono">
-                  /{c.name}
-                  {c.args ? ` ${c.args}` : ''}
-                </span>
-                <span className="popup-hint">{c.hint}</span>
-              </div>
-            ))}
-          {popup.kind === 'mention' &&
-            mentionOptions.map((m, i) => (
-              <div
-                key={m.path}
-                role="option"
-                aria-selected={i === active}
-                className={`popup-item${i === active ? ' active' : ''}`}
-                onMouseEnter={() => setActive(i)}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  pickMention(i);
-                }}
-              >
-                <span>
-                  {m.isFolder ? '📁 ' : ''}
-                  {m.path.split('/').pop()}
-                  {m.isFolder ? '/' : ''}
-                </span>
-                <span className="popup-hint">{m.path}</span>
-              </div>
-            ))}
-          {optionCount === 0 && (
-            <div className="popup-empty">{popup.kind === 'mention' ? (popup.query ? 'No matching files.' : 'Searching…') : 'No such command.'}</div>
-          )}
+        <div className="popover above align-stretch composer-popup" role="listbox">
+          <div className="option-list">
+            {popup.kind === 'slash' &&
+              slashOptions.map((c, i) => (
+                <OptionRow
+                  key={c.name}
+                  label={
+                    <span className="mono">
+                      /{c.name}
+                      {c.args ? <span className="muted"> {c.args}</span> : null}
+                    </span>
+                  }
+                  trailing={<span className="option-hint">{c.hint}</span>}
+                  active={i === active}
+                  onHover={() => setActive(i)}
+                  onPick={() => pickSlash(i)}
+                />
+              ))}
+            {popup.kind === 'mention' &&
+              mentionOptions.map((m, i) => (
+                <OptionRow
+                  key={m.path}
+                  icon={<FileIcon />}
+                  label={
+                    <>
+                      {m.path.split('/').pop()}
+                      {m.isFolder ? '/' : ''}
+                    </>
+                  }
+                  trailing={<span className="option-hint">{m.path}</span>}
+                  active={i === active}
+                  onHover={() => setActive(i)}
+                  onPick={() => pickMention(i)}
+                />
+              ))}
+            {optionCount === 0 && (
+              <div className="option-empty">{popup.kind === 'mention' ? (popup.query ? 'No matching files.' : 'Searching…') : 'No such command.'}</div>
+            )}
+          </div>
         </div>
       )}
-      <ContextChips chips={chips} tabId={tabId} />
-      <textarea
-        ref={ref}
-        value={text}
-        rows={1}
-        placeholder={running ? 'Running… (Esc to stop)' : PLACEHOLDER[mode]}
-        onChange={(e) => {
-          setText(e.target.value);
-          detectPopup(e.target.value, e.target.selectionStart);
+      <div
+        className={`composer-box${disabled ? ' disabled' : ''}`}
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget) setTimeout(() => ref.current?.focus(), 0);
         }}
-        onClick={(e) => detectPopup(text, e.currentTarget.selectionStart)}
-        onBlur={() => setTimeout(() => setPopup(undefined), 150)}
-        onKeyDown={onKeyDown}
-        aria-label="Message"
-      />
-      <div className="composer-bar">
-        <ModeSelect mode={mode} modesSupported={modesSupported} onChange={props.onModeChange} />
-        <ModelSelect
-          models={models}
-          value={model}
-          openRequest={modelOpen}
-          onChange={props.onModelChange}
-          onRefresh={() => send({ type: 'models/refresh' })}
+      >
+        <ContextChips chips={chips} tabId={tabId} />
+        <textarea
+          ref={ref}
+          value={text}
+          rows={1}
+          placeholder={running ? 'Working… press Esc to stop' : PLACEHOLDER[mode]}
+          onChange={(e) => {
+            setText(e.target.value);
+            detectPopup(e.target.value, e.target.selectionStart);
+          }}
+          onClick={(e) => detectPopup(text, e.currentTarget.selectionStart)}
+          onBlur={() => setTimeout(() => setPopup(undefined), 150)}
+          onKeyDown={onKeyDown}
+          aria-label="Message"
         />
-        {props.worktreeSupported && tabId && (
-          <label
-            className={`worktree-toggle${props.worktree ? ' on' : ''}`}
-            title="Run this tab in its own git worktree (cursor-agent -w). Your working tree stays untouched; good for parallel tabs. Needs a git repo."
-          >
-            <input
-              type="checkbox"
-              checked={!!props.worktree}
-              disabled={running}
-              onChange={(e) => send({ type: 'tab/setWorktree', tabId, enabled: e.target.checked })}
-            />
-            Worktree
-          </label>
-        )}
-        <span className="spacer" />
-        {running ? (
-          <button className="btn stop" onClick={props.onStop} title="Stop (Esc)">
-            Stop
+        <div className="composer-bar">
+          <div className="attach-menu">
+            <button className="icon-btn" title="Add context" aria-label="Add context" aria-expanded={attachOpen} onClick={() => setAttachOpen(!attachOpen)}>
+              <PlusIcon />
+            </button>
+            <Popover open={attachOpen} onClose={closeAttach} placement="above" className="attach-popover" label="Add context">
+              <div className="option-list" role="listbox">
+                <OptionRow
+                  icon={<FileIcon />}
+                  label="Attach file or folder"
+                  description="Same as typing @"
+                  onPick={() => {
+                    setAttachOpen(false);
+                    insertTrigger('@');
+                  }}
+                />
+                <OptionRow
+                  icon={<span className="glyph">⌶</span>}
+                  label="Add editor selection"
+                  description="Ctrl+L in the editor"
+                  onPick={() => {
+                    setAttachOpen(false);
+                    send({ type: 'context/add', what: 'selection' });
+                  }}
+                />
+                <OptionRow
+                  icon={<WarnIcon />}
+                  label="Add problems"
+                  description="Errors and warnings in the current file"
+                  onPick={() => {
+                    setAttachOpen(false);
+                    send({ type: 'context/add', what: 'problems' });
+                  }}
+                />
+                {props.worktreeSupported && tabId && (
+                  <OptionRow
+                    icon={<BranchIcon />}
+                    label="Run in a git worktree"
+                    description={running ? 'Can’t change while running' : 'Your working tree stays untouched'}
+                    current={!!props.worktree}
+                    disabled={running}
+                    onPick={() => {
+                      setAttachOpen(false);
+                      send({ type: 'tab/setWorktree', tabId, enabled: !props.worktree });
+                    }}
+                  />
+                )}
+              </div>
+            </Popover>
+          </div>
+          <button className="icon-btn" title="Commands" aria-label="Commands" onClick={() => insertTrigger('/')}>
+            <SlashIcon />
           </button>
-        ) : (
-          <button className="btn primary" onClick={submit} disabled={!text.trim() || disabled} title="Send (Enter)">
-            Send
-          </button>
-        )}
+          <ModelSelect
+            models={models}
+            value={model}
+            openRequest={modelOpen}
+            onChange={props.onModelChange}
+            onRefresh={() => send({ type: 'models/refresh' })}
+          />
+          {props.worktree && (
+            <span className="pill static" title="This session runs in its own git worktree">
+              <BranchIcon /> worktree
+            </span>
+          )}
+          <span className="spacer" />
+          <ModeSelect mode={mode} modesSupported={modesSupported} onChange={props.onModeChange} />
+          {running ? (
+            <button className="send-btn stop" onClick={props.onStop} title="Stop (Esc)" aria-label="Stop">
+              <StopIcon />
+            </button>
+          ) : (
+            <button className={`send-btn${canSend ? ' ready' : ''}`} onClick={submit} disabled={!canSend} title="Send (Enter)" aria-label="Send">
+              <ArrowUpIcon />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { HostMessageSchema } from '../../src/shared/protocol';
 import { App } from './App';
 import { useStore } from './state/store';
 import { send } from './vscode';
+import './theme.css';
 import './styles.css';
 
 window.addEventListener('message', (e: MessageEvent) => {

@@ -7,6 +7,7 @@ import type {
   MentionItem,
   ModelOption,
   RunRecord,
+  SessionRow,
   TabSnapshot,
   TranscriptItem,
 } from '../../../src/shared/protocol';
@@ -37,6 +38,14 @@ interface Store {
   notice?: { id: number; level: 'info' | 'warning' | 'error'; text: string };
   /** Tabs with activity the user hasn't seen (finished or streamed while inactive). */
   unread: Record<string, boolean>;
+  /** Past sessions for the header history dropdown (same rows as the Session Manager). */
+  sessionRows: SessionRow[];
+  sessionsAt: number;
+  /** Bumped to open the history dropdown / help popover. */
+  historyRequest: number;
+  helpRequest: number;
+  openHistory(): void;
+  openHelp(): void;
   activate(tabId: string): void;
   handle(msg: HostMessage): void;
   dismissNotice(): void;
@@ -61,6 +70,18 @@ export const useStore = create<Store>((set, get) => ({
   models: [],
   mention: { requestId: -1, items: [] },
   unread: {},
+  sessionRows: [],
+  sessionsAt: 0,
+  historyRequest: 0,
+  helpRequest: 0,
+
+  openHistory() {
+    set({ historyRequest: get().historyRequest + 1 });
+  },
+
+  openHelp() {
+    set({ helpRequest: get().helpRequest + 1 });
+  },
 
   activate(tabId) {
     const { unread } = get();
@@ -194,6 +215,12 @@ export const useStore = create<Store>((set, get) => ({
       }
       case 'notice':
         set({ notice: { id: Date.now(), level: msg.level, text: msg.text } });
+        break;
+      case 'sessions/state':
+        set({ sessionRows: msg.rows, sessionsAt: Date.now() });
+        break;
+      case 'history/open':
+        set({ historyRequest: s.historyRequest + 1 });
         break;
     }
   },

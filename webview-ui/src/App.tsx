@@ -4,14 +4,26 @@ import { ChatHeader } from './components/ChatHeader';
 import { CliBanner } from './components/CliBanner';
 import { Composer } from './components/Composer';
 import { ContextChips } from './components/ContextChips';
+import { HelpPanel } from './components/HelpPanel';
+import { Mascot } from './components/Mascot';
 import { Notice } from './components/Notice';
 import { RunMessage } from './components/RunMessage';
 import { TabContext } from './components/tools/util';
+import { RestoreIcon } from './sessions/icons';
 import { useStore } from './state/store';
 import { send } from './vscode';
 
 /** Composer mode per tab, kept while switching tabs. */
 const composerModes = new Map<string, Mode>();
+
+const TIPS = [
+  'Type /model to pick the right model for the job.',
+  'Shift+Tab switches between Agent, Ask and Plan.',
+  'Type @ to attach files and folders.',
+  'Select code and press Ctrl+L to add it to the chat.',
+  'Every change can be reviewed and reverted.',
+  'Press ↑ in an empty box to recall your last message.',
+];
 
 export function App() {
   const { tabs, activeTabId, defaultMode, focusRequest, cli, models } = useStore();
@@ -21,6 +33,7 @@ export function App() {
   const listRef = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
   const modesSupported = cli.features?.modes ?? true;
+  const [tip] = useState(() => TIPS[Math.floor(Math.random() * TIPS.length)]!);
 
   useEffect(() => {
     if (tab) setMode(composerModes.get(tab.meta.id) ?? tab.meta.mode);
@@ -107,40 +120,25 @@ export function App() {
         <div className="messages" ref={listRef} onScroll={onScroll}>
           {!tab || tab.transcript.length === 0 ? (
             <div className="empty">
-              <p className="empty-hero">What should we build?</p>
-              <p className="muted">
-                Select code and press <kbd>Ctrl+L</kbd> to add it, type <kbd>@</kbd> to attach files, or just type below.
-              </p>
-              <p className="muted">
-                <b>Agent</b> edits files and runs commands (you can review and revert every change), <b>Ask</b> is read-only,{' '}
-                <b>Plan</b> proposes a plan you can then run.
-              </p>
-              <table className="shortcuts">
-                <tbody>
-                  <tr><td><kbd>Enter</kbd> / <kbd>Shift+Enter</kbd></td><td>send / new line</td></tr>
-                  <tr><td><kbd>Shift+Tab</kbd></td><td>cycle Agent · Ask · Plan</td></tr>
-                  <tr><td><kbd>Esc</kbd></td><td>stop the run</td></tr>
-                  <tr><td><kbd>↑</kbd> in an empty box</td><td>recall your last message</td></tr>
-                  <tr><td><kbd>Alt+N</kbd></td><td>new session (switch sessions in the Cursor sidebar)</td></tr>
-                  <tr><td><kbd>Ctrl+I</kbd> · <kbd>Ctrl+L</kbd></td><td>focus chat · add selection</td></tr>
-                </tbody>
-              </table>
+              <Mascot size={56} />
+              <p className="empty-tip">{tip}</p>
             </div>
           ) : (
             tab.transcript.map((item) =>
               item.role === 'user' ? (
                 <div key={item.id} className="user-msg">
-                  <span className={`mode-badge ${item.mode}`}>{item.mode}</span>
-                  {item.chips && <ContextChips chips={item.chips} readOnly />}
+                  {item.chips && item.chips.length > 0 && <ContextChips chips={item.chips} readOnly />}
                   <div className="user-text">{item.text}</div>
+                  {item.mode !== 'agent' && <span className="user-mode">{item.mode}</span>}
                   {restorable.has(item.id) && (
                     <button
-                      className="restore-btn link"
+                      className="restore-btn icon-btn"
                       disabled={running}
-                      title="Restore every file changed from this message on to how it was before (asks first)"
+                      title="Restore code to before this message (asks first)"
+                      aria-label="Restore code to before this message"
                       onClick={() => send({ type: 'checkpoint/restore', tabId: tab.meta.id, userMessageId: item.id })}
                     >
-                      ↶ Restore code to before this message
+                      <RestoreIcon />
                     </button>
                   )}
                 </div>
@@ -150,6 +148,7 @@ export function App() {
             )
           )}
         </div>
+        <HelpPanel />
         <Notice />
         <Composer
           key={tab?.meta.id ?? 'none'}

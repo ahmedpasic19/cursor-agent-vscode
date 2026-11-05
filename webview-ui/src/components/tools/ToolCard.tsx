@@ -19,25 +19,24 @@ interface ShellProps {
   icon?: ReactNode;
 }
 
-/** Compact one-line card with an expandable body (PLAN.md §5.5). */
+/** One timeline line: status dot, bold verb + muted target, expandable body (UI_REDESIGN_PLAN §7). */
 function CardShell({ status, title, onTitleClick, titleHint, children, className, defaultOpen, icon: iconOverride }: ShellProps) {
   const [open, setOpen] = useState(!!defaultOpen);
   const expandable = children !== undefined && children !== null && children !== false;
-  const icon =
-    iconOverride ??
-    (status === 'running' ? <span className="spinner" aria-label="running" /> : status === 'error' ? '✕' : '✓');
   return (
-    <div className={`tool-card ${status} ${className ?? ''}`}>
-      <div className="tool-header-row">
+    <div className={`tl-item tool ${status} ${className ?? ''}`}>
+      <span className="tl-dot" aria-label={status === 'running' ? 'running' : status === 'error' ? 'failed' : 'done'}>
+        {iconOverride}
+      </span>
+      <div className="tl-content">
         <button
-          className="tool-header"
+          className={`tl-head${expandable ? ' expandable' : ''}`}
           onClick={() => (expandable ? setOpen(!open) : onTitleClick?.())}
           aria-expanded={expandable ? open : undefined}
         >
-          <span className="tool-icon">{icon}</span>
           {onTitleClick ? (
             <span
-              className="tool-title clickable"
+              className="tl-title clickable"
               title={titleHint}
               role="link"
               onClick={(e) => {
@@ -48,17 +47,19 @@ function CardShell({ status, title, onTitleClick, titleHint, children, className
               {title}
             </span>
           ) : (
-            <span className="tool-title" title={titleHint}>
+            <span className="tl-title" title={titleHint}>
               {title}
             </span>
           )}
-          {expandable && <span className="chevron">{open ? '▾' : '▸'}</span>}
+          {expandable && <span className={`tl-chevron${open ? ' open' : ''}`}>›</span>}
         </button>
+        {expandable && open && <div className="tl-body">{children}</div>}
       </div>
-      {expandable && open && <div className="tool-body">{children}</div>}
     </div>
   );
 }
+
+const Verb = ({ children }: { children: ReactNode }) => <b className="tl-verb">{children}</b>;
 
 function ErrorLine({ tool }: { tool: ToolCallInfo }) {
   return tool.error ? <div className="tool-error">{tool.error}</div> : null;
@@ -78,7 +79,7 @@ function ReadCard({ tool, status }: { tool: ToolCallInfo; status: ToolStatus }) 
       status={status}
       title={
         <>
-          Read <span className="path">{relPath(path, cwd)}</span>
+          <Verb>Read</Verb> <span className="tl-target path">{relPath(path, cwd)}</span>
           <span className="muted">{lines}</span>
         </>
       }
@@ -123,10 +124,9 @@ function EditCard({ tool, status }: { tool: ToolCallInfo; status: ToolStatus }) 
     <CardShell
       status={status}
       className={blocked ? 'blocked' : undefined}
-      icon={blocked ? '⏸' : undefined}
       title={
         <>
-          {verb} <span className="path">{relPath(path, cwd)}</span>
+          <Verb>{verb}</Verb> <span className="tl-target path">{relPath(path, cwd)}</span>
           {add !== undefined && <span className="add-count"> +{add}</span>}
           {del !== undefined && <span className="del-count"> −{del}</span>}
         </>
@@ -165,11 +165,11 @@ function DeleteCard({ tool, status }: { tool: ToolCallInfo; status: ToolStatus }
       status={status}
       title={
         <>
-          {status === 'running' ? 'Deleting' : 'Deleted'} <span className="path">{relPath(path, cwd)}</span>
+          <Verb>{status === 'running' ? 'Deleting' : 'Deleted'}</Verb> <span className="tl-target path">{relPath(path, cwd)}</span>
         </>
       }
     >
-      {tool.error ? <ErrorLine tool={tool} /> : <div className="muted">Restore is available from the Changes card (Phase 4).</div>}
+      {tool.error ? <ErrorLine tool={tool} /> : undefined}
     </CardShell>
   );
 }
@@ -179,6 +179,7 @@ function DeleteCard({ tool, status }: { tool: ToolCallInfo; status: ToolStatus }
 function ShellCard({ tool, status }: { tool: ToolCallInfo; status: ToolStatus }) {
   const r = tool.result;
   const cmd = str(tool.args.command) ?? str(r?.command) ?? '';
+  const desc = str(tool.args.description);
   const out = stripAnsi(str(r?.interleavedOutput) || [str(r?.stdout), str(r?.stderr)].filter(Boolean).join('\n') || '');
   const code = num(r?.exitCode);
   const { text, cut } = truncateLines(out.replace(/\s+$/, ''), 200);
@@ -186,13 +187,28 @@ function ShellCard({ tool, status }: { tool: ToolCallInfo; status: ToolStatus })
   return (
     <CardShell
       status={failed && status !== 'running' ? 'error' : status}
-      title={<span className="mono">$ {cmd}</span>}
-      titleHint={str(tool.args.description) ?? cmd}
+      title={
+        <>
+          <Verb>Bash</Verb> <span className={desc ? 'tl-target' : 'tl-target mono'}>{desc ?? cmd}</span>
+          {code !== undefined && code !== 0 && <span className="del-count"> exit {code}</span>}
+        </>
+      }
+      titleHint={cmd}
     >
       <ErrorLine tool={tool} />
-      {text ? <pre className="shell-out">{text}</pre> : status !== 'running' && <div className="muted">(no output)</div>}
-      {cut > 0 && <div className="muted">… {cut} more lines</div>}
-      {code !== undefined && <div className={`exit-code ${code === 0 ? '' : 'bad'}`}>exit code {code}</div>}
+      <div className="io">
+        <div className="io-row">
+          <span className="io-label">IN</span>
+          <pre className="io-text">{cmd}</pre>
+        </div>
+        <div className="io-row">
+          <span className="io-label">OUT</span>
+          <pre className="io-text">
+            {text || (status === 'running' ? '…' : '(no output)')}
+            {cut > 0 && `\n… ${cut} more lines`}
+          </pre>
+        </div>
+      </div>
     </CardShell>
   );
 }
@@ -249,7 +265,7 @@ function SearchCard({ tool, status }: { tool: ToolCallInfo; status: ToolStatus }
       status={status}
       title={
         <>
-          {verb} <span className="mono">"{q}"</span>
+          <Verb>{verb}</Verb> <span className="tl-target mono">{q}</span>
           <span className="muted">{count}</span>
         </>
       }
@@ -282,7 +298,9 @@ export function PlanCard({ tool, status, canExecute }: { tool: ToolCallInfo; sta
   const plan = str(a.plan) ?? '';
   const todos = Array.isArray(a.todos) ? a.todos.filter(isObj) : [];
   return (
-    <div className={`plan-card ${status}`}>
+    <div className={`tl-item plan ${status}`}>
+      <span className="tl-dot" />
+      <div className="tl-content plan-card">
       <div className="plan-header">
         <span className="plan-label">Plan</span>
         <span className="plan-name">{str(a.name) ?? ''}</span>
@@ -292,7 +310,7 @@ export function PlanCard({ tool, status, canExecute }: { tool: ToolCallInfo; sta
         <ul className="todo-list">
           {todos.map((t, i) => (
             <li key={str(t.id) ?? i}>
-              <span className="todo-box">☐</span> {str(t.content) ?? ''}
+              <span className="todo-box">○</span> {str(t.content) ?? ''}
             </li>
           ))}
         </ul>
@@ -310,6 +328,7 @@ export function PlanCard({ tool, status, canExecute }: { tool: ToolCallInfo; sta
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -318,15 +337,27 @@ export function PlanCard({ tool, status, canExecute }: { tool: ToolCallInfo; sta
 
 function TodoCard({ tool, status }: { tool: ToolCallInfo; status: ToolStatus }) {
   const todos = (Array.isArray(tool.args.todos) ? tool.args.todos : []).filter(isObj);
-  const mark = (s?: string) => (/complete|done/i.test(s ?? '') ? '☑' : /progress/i.test(s ?? '') ? '◐' : '☐');
+  const state = (s?: string) => (/complete|done/i.test(s ?? '') ? 'done' : /progress/i.test(s ?? '') ? 'doing' : 'todo');
+  const doneCount = todos.filter((t) => state(str(t.status)) === 'done').length;
   return (
-    <CardShell status={status} title={`Updated todos (${todos.length})`}>
+    <CardShell
+      status={status}
+      defaultOpen
+      title={
+        <>
+          <Verb>Tasks</Verb> <span className="tl-target">{doneCount} of {todos.length} done</span>
+        </>
+      }
+    >
       <ul className="todo-list">
-        {todos.map((t, i) => (
-          <li key={str(t.id) ?? i}>
-            <span className="todo-box">{mark(str(t.status))}</span> {str(t.content) ?? ''}
-          </li>
-        ))}
+        {todos.map((t, i) => {
+          const st = state(str(t.status));
+          return (
+            <li key={str(t.id) ?? i} className={`todo ${st}`}>
+              <span className="todo-box">{st === 'done' ? '✓' : st === 'doing' ? '◐' : '○'}</span> {str(t.content) ?? ''}
+            </li>
+          );
+        })}
       </ul>
     </CardShell>
   );
@@ -337,7 +368,14 @@ function TodoCard({ tool, status }: { tool: ToolCallInfo; status: ToolStatus }) 
 function RawCard({ tool, status }: { tool: ToolCallInfo; status: ToolStatus }) {
   const label = tool.uiKind === 'mcp' ? `MCP: ${str(tool.args.toolName) ?? str(tool.args.name) ?? tool.name}` : tool.name;
   return (
-    <CardShell status={status} title={label}>
+    <CardShell
+      status={status}
+      title={
+        <>
+          <Verb>{tool.uiKind === 'mcp' ? 'MCP' : 'Tool'}</Verb> <span className="tl-target">{label.replace(/^MCP: /, '')}</span>
+        </>
+      }
+    >
       <ErrorLine tool={tool} />
       <pre>{JSON.stringify({ args: tool.args, result: tool.result }, null, 2)}</pre>
     </CardShell>
@@ -360,8 +398,9 @@ export function ToolCard({ tool, status, canExecutePlan }: { tool: ToolCallInfo;
       return <PlanCard tool={tool} status={status} canExecute={!!canExecutePlan} />;
     case 'mode':
       return (
-        <div className={`mode-note ${status}`}>
-          ⇄ {status === 'error' ? 'Mode switch failed' : `Switched to ${str(tool.args.targetModeId) ?? '?'} mode`}
+        <div className={`tl-item mode-note ${status}`}>
+          <span className="tl-dot" />
+          <div className="tl-content">{status === 'error' ? 'Mode switch failed' : `Switched to ${str(tool.args.targetModeId) ?? '?'} mode`}</div>
         </div>
       );
     case 'todo':
@@ -374,7 +413,7 @@ export function ToolCard({ tool, status, canExecutePlan }: { tool: ToolCallInfo;
 export function UnknownCard({ raw }: { raw: unknown }) {
   const type = isObj(raw) ? [str(raw.type), str(raw.subtype)].filter(Boolean).join(':') || 'event' : 'line';
   return (
-    <CardShell status="done" className="unknown" icon="?" title={<span className="muted">Unrecognized {type}</span>}>
+    <CardShell status="done" className="unknown" title={<span className="muted">Unrecognized {type}</span>}>
       <pre>{typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2)}</pre>
     </CardShell>
   );

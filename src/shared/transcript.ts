@@ -119,3 +119,91 @@ export function buildRunView(events: AgentEvent[]): RunView {
   for (const ev of events) applyEvent(view, ev);
   return view;
 }
+
+// ---------- display grouping (webview timeline) ----------
+
+export type ToolBlock = Extract<Block, { type: 'tool' }>;
+export type ThinkingBlock = Extract<Block, { type: 'thinking' }>;
+
+export type DisplayItem =
+  | { type: 'block'; key: string; block: Block; index: number }
+  /** Consecutive thinking blocks folded into one "Thinking" line. */
+  | { type: 'thinking'; key: string; text: string; done: boolean; ms?: number }
+  /** 2+ consecutive read-only tools (read / search), with done thinking in between absorbed. */
+  | { type: 'explore'; key: string; tools: ToolBlock[] };
+
+const isExploreTool = (b: Block | undefined): b is ToolBlock =>
+  b?.type === 'tool' && (b.tool.uiKind === 'read' || b.tool.uiKind === 'search');
+
+/**
+ * Turns a run's blocks into timeline items: merges consecutive thinking blocks and groups runs
+ * of read/search tools ("Read 6 files, searched 2 patterns"). Pure; the blocks are not copied.
+ */
+export function groupBlocks(blocks: Block[]): DisplayItem[] {
+  const out: DisplayItem[] = [];
+  let i = 0;
+  while (i < blocks.length) {
+    const b = blocks[i]!;
+    if (isExploreTool(b)) {
+      let j = i;
+      let lastTool = i;
+      while (j < blocks.length) {
+        const x = blocks[j]!;
+        if (isExploreTool(x)) lastTool = j;
+        else if (!(x.type === 'thinking' && x.done)) break;
+        j++;
+      }
+      const tools = blocks.slice(i, lastTool + 1).filter(isExploreTool);
+      if (tools.length >= 2) {
+        out.push({ type: 'explore', key: `x-${tools[0]!.tool.callId}`, tools });
+        i = lastTool + 1;
+        continue;
+      }
+    }
+    if (b.type === 'thinking') {
+      let j = i;
+      const parts: string[] = [];
+      let start: number | undefined;
+      let end: number | undefined;
+      let done = true;
+      while (j < blocks.length && blocks[j]!.type === 'thinking') {
+        const t = blocks[j] as ThinkingBlock;
+        if (t.text.trim()) parts.push(t.text.trim());
+        start ??= t.startedAt;
+        end = t.endedAt ?? end;
+        done = t.done;
+        j++;
+      }
+      out.push({
+        type: 'thinking',
+        key: `t-${i}`,
+        text: parts.join('\n\n'),
+        done,
+        ms: start !== undefined && end !== undefined ? end - start : undefined,
+      });
+      i = j;
+      continue;
+    }
+    out.push({ type: 'block', key: b.type === 'tool' ? b.tool.callId : `b-${i}`, block: b, index: i });
+    i++;
+  }
+  return out;
+}
+
+/** "Read 3 files, searched 2 patterns, listed 1 folder". */
+export function exploreSummary(tools: ToolBlock[], running: boolean): string {
+  let read = 0;
+  let searched = 0;
+  let listed = 0;
+  for (const t of tools) {
+    if (t.tool.uiKind === 'read') read++;
+    else if (t.tool.name === 'ls' || t.tool.name === 'list') listed++;
+    else searched++;
+  }
+  const n = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`;
+  const parts: string[] = [];
+  if (read) parts.push(`${running && !searched && !listed ? 'Reading' : 'Read'} ${n(read, 'file', 'files')}`);
+  if (searched) parts.push(`${parts.length ? 'searched' : running ? 'Searching' : 'Searched'} ${n(searched, 'pattern', 'patterns')}`);
+  if (listed) parts.push(`${parts.length ? 'listed' : 'Listed'} ${n(listed, 'folder', 'folders')}`);
+  return parts.join(', ');
+}

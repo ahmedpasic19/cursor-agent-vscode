@@ -11,7 +11,7 @@
 import { addChip, chipId } from '../../src/context/chips';
 import { fuzzyFilter, withFolders } from '../../src/context/fuzzy';
 import { CursorStreamParser } from '../../src/parser/cursorStreamJson';
-import type { ChangedFile, CliStatus, ContextChip, HostMessage, RunChanges, RunRecord, WebviewMessage } from '../../src/shared/protocol';
+import type { ChangedFile, CliStatus, ContextChip, HostMessage, RunChanges, RunRecord, SessionRow, WebviewMessage } from '../../src/shared/protocol';
 import { buildPrompt } from '../../src/session/promptBuilder';
 
 type Mode = RunRecord['mode'];
@@ -241,9 +241,41 @@ function replay(sc: Scenario, text: string, mode: Mode, attached: ContextChip[] 
     console.log('[webview → host]', msg);
     (window as unknown as { __hostLog: WebviewMessage[] }).__hostLog.push(msg);
     switch (msg.type) {
-      case 'ready':
+      case 'ready': {
         reset();
         replay(current, current.prompt, current.mode);
+        const now = Date.now();
+        const row = (id: string, title: string, ago: number, extra: Partial<SessionRow> = {}): SessionRow => ({
+          id,
+          title,
+          createdAt: now - ago,
+          updatedAt: now - ago,
+          preview: `${title} …`,
+          messageCount: 4,
+          status: 'idle',
+          unread: false,
+          ...extra,
+        });
+        post({
+          type: 'sessions/state',
+          groups: [],
+          activeId: TAB,
+          rows: [
+            row(TAB, 'Harness session', 0),
+            row('s1', 'Backfill migration for invoices', 21 * 60_000, { status: 'running' }),
+            row('s2', 'Storno e-fiscal flow', 3 * 3_600_000, { unread: true }),
+            row('s3', 'Fix TableOffers total', 26 * 3_600_000),
+            row('s4', 'Refactor auth middleware', 4 * 86_400_000),
+            row('s5', 'Investigate flaky checkpoint test', 40 * 86_400_000),
+          ],
+        });
+        break;
+      }
+      case 'session/open':
+        post({ type: 'notice', level: 'info', text: `(harness) would open session ${msg.id}` });
+        break;
+      case 'context/add':
+        post({ type: 'notice', level: 'info', text: `(harness) would add ${msg.what} to the chat` });
         break;
       case 'tab/new': {
         const id = `tab_extra_${++n}`;

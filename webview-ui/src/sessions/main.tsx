@@ -3,6 +3,7 @@ import { HostMessageSchema } from '../../../src/shared/protocol';
 import { send } from '../vscode';
 import { SessionsApp } from './SessionsApp';
 import { useSessions } from './store';
+import '../theme.css';
 import './sessions.css';
 
 window.addEventListener('message', (e: MessageEvent) => {

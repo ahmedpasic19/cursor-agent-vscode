@@ -512,3 +512,78 @@ body.dragging .ungroup-drop {
 .notice span {
   flex: 1;
 }
+
+/* ---------- Claude-style polish on the shared tokens (UI_REDESIGN_PLAN §8) ---------- */
+.session-row,
+.group-header,
+.new-session {
+  margin: 0 6px;
+  border-radius: var(--ca-radius);
+}
+.session-row {
+  padding-left: 10px;
+}
+.group-body .session-row {
+  padding-left: 22px;
+}
+.session-row:hover,
+.group-header:hover,
+.new-session:hover,
+.tool-btn:hover {
+  background: var(--ca-hover);
+}
+.session-row.active {
+  background: var(--ca-active);
+  color: var(--ca-text);
+}
+.search input,
+.inline-input {
+  border-radius: var(--ca-radius);
+  border-color: var(--ca-border);
+  background: var(--ca-bg);
+  padding: 4px 8px;
+}
+.search input:focus {
+  border-color: var(--ca-border-strong);
+}
+.menu {
+  border-radius: var(--ca-radius-lg);
+  border: 1px solid var(--ca-border);
+  background: var(--vscode-editorWidget-background, var(--ca-surface));
+  box-shadow: var(--ca-shadow);
+  padding: 4px;
+}
+.menu-item {
+  border-radius: var(--ca-radius);
+  padding: 4px 10px 4px 6px;
+}
+.menu-item:hover,
+.menu-item:focus-visible {
+  background: var(--ca-hover);
+  color: var(--ca-text);
+}
+.group-count {
+  background: var(--ca-surface-2);
+  color: var(--ca-muted);
+}
+.btn {
+  border-radius: var(--ca-radius-sm);
+}
+.btn.primary {
+  background: var(--ca-accent);
+  color: var(--ca-accent-ink);
+}
+.btn.primary:hover {
+  background: var(--ca-accent);
+  filter: brightness(0.92);
+}
+.bar,
+.bar-fill {
+  border-radius: 3px;
+}
+.bar-fill {
+  background: var(--ca-accent);
+}
+.dot.unread {
+  background: var(--ca-accent);
+}

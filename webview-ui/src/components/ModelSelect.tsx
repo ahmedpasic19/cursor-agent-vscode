@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { ModelOption } from '../../../src/shared/protocol';
+import { modelDescription, recentModels, rememberModel } from '../modelInfo';
+import { RefreshIcon } from '../sessions/icons';
+import { OptionRow, Popover } from './Popover';
 
 interface Props {
   models: ModelOption[];
@@ -9,52 +12,62 @@ interface Props {
   onRefresh(): void;
 }
 
-/** Filterable model picker: CLI models, "Default", and a free-text custom id (PLAN.md §5.3). */
+interface Opt {
+  id?: string;
+  label: string;
+  description?: string;
+  section?: string;
+}
+
+/**
+ * Claude Code–style model picker: a pill in the composer that opens a list of two-line rows
+ * (name + description) with a check on the current model. Typing filters the list; a custom
+ * id can be used as-is.
+ */
 export function ModelSelect({ models, value, openRequest, onChange, onRefresh }: Props) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState('');
   const [active, setActive] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const rootRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (openRequest > 0) setOpen(true);
   }, [openRequest]);
 
   useEffect(() => {
-    if (open) {
-      setFilter('');
-      setActive(0);
-      setTimeout(() => inputRef.current?.focus(), 0);
-    }
-  }, [open]);
-
-  // Close on outside click.
-  useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    window.addEventListener('mousedown', onDown);
-    return () => window.removeEventListener('mousedown', onDown);
+    setFilter('');
+    setActive(0);
+    setTimeout(() => listRef.current?.focus(), 0);
   }, [open]);
 
-  const options = useMemo(() => {
+  const labelOf = useCallback((id?: string) => (id ? (models.find((m) => m.id === id)?.label ?? id) : 'Default'), [models]);
+
+  const options = useMemo<Opt[]>(() => {
     const f = filter.trim().toLowerCase();
-    const list: { id?: string; label: string; hint?: string }[] = [];
     const def = models.find((m) => m.isDefault);
-    if (!f || 'default'.includes(f)) list.push({ id: undefined, label: 'Default', hint: def ? def.label : 'CLI default' });
-    const matched = models.filter((m) => !f || m.id.toLowerCase().includes(f) || m.label.toLowerCase().includes(f));
-    for (const m of matched.slice(0, 200)) list.push({ id: m.id, label: m.label, hint: m.id });
-    if (f && !models.some((m) => m.id.toLowerCase() === f)) list.push({ id: filter.trim(), label: `Use "${filter.trim()}"`, hint: 'custom model id' });
-    return list;
-  }, [models, filter]);
+    if (f) {
+      const out: Opt[] = models
+        .filter((m) => m.id.toLowerCase().includes(f) || m.label.toLowerCase().includes(f))
+        .slice(0, 200)
+        .map((m) => ({ id: m.id, label: m.label, description: modelDescription(m.id) }));
+      if ('default'.includes(f)) out.unshift({ id: undefined, label: 'Default', description: def ? `CLI default: ${def.label}` : modelDescription(undefined) });
+      if (!models.some((m) => m.id.toLowerCase() === f)) out.push({ id: filter.trim(), label: `Use “${filter.trim()}”`, description: 'Custom model id' });
+      return out;
+    }
+    const out: Opt[] = [{ id: undefined, label: 'Default', description: def ? `CLI default: ${def.label}` : modelDescription(undefined) }];
+    const seen = new Set<string>();
+    const recent = [value, ...recentModels()].filter((id): id is string => !!id && !seen.has(id) && !!seen.add(id));
+    recent.forEach((id, i) => out.push({ id, label: labelOf(id), description: modelDescription(id), section: i === 0 ? 'Recent' : undefined }));
+    models
+      .filter((m) => !seen.has(m.id))
+      .forEach((m, i) => out.push({ id: m.id, label: m.label, description: modelDescription(m.id), section: i === 0 ? 'All models' : undefined }));
+    return out;
+  }, [models, filter, value, labelOf]);
 
-  const current = value ? (models.find((m) => m.id === value)?.label ?? value) : 'Default model';
-
-  const pick = (i: number) => {
-    const o = options[i];
+  const pick = (o?: Opt) => {
     if (!o) return;
+    rememberModel(o.id);
     onChange(o.id);
     setOpen(false);
   };
@@ -68,56 +81,77 @@ export function ModelSelect({ models, value, openRequest, onChange, onRefresh }:
       setActive((a) => Math.max(a - 1, 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      pick(active);
-    } else if (e.key === 'Escape') {
+      pick(options[active]);
+    } else if (e.key === 'Backspace') {
       e.preventDefault();
-      setOpen(false);
+      setFilter((f) => f.slice(0, -1));
+      setActive(0);
+    } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      setFilter((f) => f + e.key);
+      setActive(0);
     }
   };
 
+  const currentDesc = modelDescription(value);
+  const close = useCallback(() => setOpen(false), []);
+
   return (
-    <div className="model-select" ref={rootRef}>
-      <button className="model-button" onClick={() => setOpen(!open)} title={value ? `Model: ${value}` : 'Model: CLI default'} aria-haspopup="listbox" aria-expanded={open}>
-        <span className="model-label">{current}</span> <span className="chevron">▾</span>
+    <div className="model-select">
+      <button
+        className={`pill model-pill${open ? ' open' : ''}`}
+        onClick={() => setOpen(!open)}
+        title={value ? `Model: ${value}` : 'Model: CLI default'}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className="model-label">{value ? labelOf(value) : 'Default model'}</span>
       </button>
-      {open && (
-        <div className="popup model-popup" role="listbox" onKeyDown={onKey}>
-          <div className="popup-search">
-            <input
-              ref={inputRef}
-              value={filter}
-              placeholder={models.length ? `Filter ${models.length} models…` : 'Type a model id…'}
-              onChange={(e) => {
-                setFilter(e.target.value);
-                setActive(0);
-              }}
-              aria-label="Filter models"
-            />
-            <button className="icon-btn small" title="Reload model list" onClick={onRefresh}>
-              ↻
+      <Popover
+        open={open}
+        onClose={close}
+        placement="above"
+        className="model-popover"
+        label="Models"
+        header={
+          filter ? (
+            <span>
+              Filter: <span className="filter-text">{filter}</span>
+              <span className="caret" />
+            </span>
+          ) : (
+            <span className="ellipsis">
+              {labelOf(value)}
+              {currentDesc ? ` · ${currentDesc}` : ''}
+            </span>
+          )
+        }
+        footer={
+          <>
+            <span className="muted">{models.length ? `${models.length} models · type to filter` : 'Type a model id'}</span>
+            <button className="ghost-btn" title="Reload the model list from the CLI" onClick={onRefresh}>
+              <RefreshIcon /> Refresh
             </button>
-          </div>
-          <div className="popup-list">
-            {options.map((o, i) => (
-              <div
-                key={`${o.id ?? '__default'}-${i}`}
-                role="option"
-                aria-selected={i === active}
-                className={`popup-item${i === active ? ' active' : ''}${o.id === value ? ' current' : ''}`}
-                onMouseEnter={() => setActive(i)}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  pick(i);
-                }}
-              >
-                <span>{o.label}</span>
-                {o.hint && <span className="popup-hint">{o.hint}</span>}
-              </div>
-            ))}
-            {!options.length && <div className="popup-empty">No models match.</div>}
-          </div>
+          </>
+        }
+      >
+        <div className="option-list" role="listbox" tabIndex={0} ref={listRef} onKeyDown={onKey} aria-label="Models">
+          {options.map((o, i) => (
+            <div key={`${o.id ?? '__default'}-${i}`}>
+              {o.section && <div className="option-section">{o.section}</div>}
+              <OptionRow
+                label={o.label}
+                description={o.description}
+                current={o.id === value}
+                active={i === active}
+                onHover={() => setActive(i)}
+                onPick={() => pick(o)}
+              />
+            </div>
+          ))}
+          {!options.length && <div className="option-empty">No models match.</div>}
         </div>
-      )}
+      </Popover>
     </div>
   );
 }
