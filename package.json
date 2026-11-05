@@ -2,7 +2,7 @@
   "name": "cursor-agent-vscode",
   "displayName": "Cursor Agent",
   "description": "Cursor's agent in a VS Code sidebar chat (personal use).",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "local",
   "private": true,
   "license": "UNLICENSED",
@@ -71,6 +71,32 @@
         "command": "cursorAgent.login",
         "title": "Log In to Cursor",
         "category": "Cursor Agent"
+      },
+      {
+        "command": "cursorAgent.addSelectionToChat",
+        "title": "Add Selection to Chat",
+        "category": "Cursor Agent",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "cursorAgent.addFileToChat",
+        "title": "Add File to Chat",
+        "category": "Cursor Agent"
+      },
+      {
+        "command": "cursorAgent.addTerminalSelectionToChat",
+        "title": "Add Terminal Output to Chat",
+        "category": "Cursor Agent"
+      },
+      {
+        "command": "cursorAgent.addProblemsToChat",
+        "title": "Add Problems to Chat",
+        "category": "Cursor Agent"
+      },
+      {
+        "command": "cursorAgent.addWorkspaceProblemsToChat",
+        "title": "Add All Workspace Problems to Chat",
+        "category": "Cursor Agent"
       }
     ],
     "menus": {
@@ -80,6 +106,52 @@
           "when": "view == cursorAgent.chat",
           "group": "navigation"
         }
+      ],
+      "editor/context": [
+        {
+          "command": "cursorAgent.addSelectionToChat",
+          "when": "editorHasSelection",
+          "group": "cursorAgent@1"
+        },
+        {
+          "command": "cursorAgent.addFileToChat",
+          "when": "!editorHasSelection",
+          "group": "cursorAgent@1"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "cursorAgent.addFileToChat",
+          "group": "cursorAgent@1"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "cursorAgent.addFileToChat",
+          "group": "cursorAgent@1"
+        }
+      ],
+      "terminal/context": [
+        {
+          "command": "cursorAgent.addTerminalSelectionToChat",
+          "group": "cursorAgent@1"
+        }
+      ],
+      "problems/context": [
+        {
+          "command": "cursorAgent.addProblemsToChat",
+          "group": "cursorAgent@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "cursorAgent.addSelectionToChat",
+          "when": "editorIsOpen"
+        },
+        {
+          "command": "cursorAgent.addFileToChat",
+          "when": "editorIsOpen"
+        }
       ]
     },
     "keybindings": [
@@ -87,6 +159,24 @@
         "command": "cursorAgent.focusChat",
         "key": "ctrl+i",
         "mac": "cmd+i"
+      },
+      {
+        "command": "cursorAgent.addSelectionToChat",
+        "key": "ctrl+l",
+        "mac": "cmd+l",
+        "when": "editorTextFocus && editorHasSelection"
+      },
+      {
+        "command": "cursorAgent.addFileToChat",
+        "key": "ctrl+alt+l",
+        "mac": "cmd+alt+l",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "cursorAgent.addTerminalSelectionToChat",
+        "key": "ctrl+l",
+        "mac": "cmd+l",
+        "when": "terminalFocus"
       }
     ],
     "configuration": {
@@ -181,7 +271,8 @@
     "test": "vitest run",
     "package": "npm run typecheck && npm test && npm run build && vsce package --no-dependencies --allow-missing-repository --skip-license",
     "record": "node scripts/record.ts",
-    "record:agent": "node scripts/record-agent-cases.ts"
+    "record:agent": "node scripts/record-agent-cases.ts",
+    "test:integration": "npm run build && node test/integration/runTest.mjs"
   },
   "devDependencies": {
     "@types/markdown-it": "^14.2.0",
@@ -190,6 +281,7 @@
     "@types/react-dom": "^18.3.7",
     "@types/vscode": "^1.100.0",
     "@vitejs/plugin-react": "^4.7.0",
+    "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^4.1.0",
     "esbuild": "^0.28.2",
     "markdown-it": "^15.0.3",

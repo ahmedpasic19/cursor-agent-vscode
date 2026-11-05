@@ -1,7 +1,7 @@
 import { tmpdir } from 'node:os';
 import type { CliStatus } from '../shared/protocol';
 import { CliBackend, type Logger } from './CliBackend';
-import { type CliCapabilities, probeAuth, probeCapabilities, probeVersion } from './cliCapabilities';
+import { type CliCapabilities, type ModelInfo, probeAuth, probeCapabilities, probeModels, probeVersion } from './cliCapabilities';
 import { type CliInfo, locateCli } from './cliLocator';
 
 /** Locates and probes the CLI; caches capabilities per version. */
@@ -72,6 +72,20 @@ export class CliService {
       return this.set({ state: 'notLoggedIn', version, features, message: 'Not logged in. Run `cursor-agent login`.' });
     }
     return this.set({ state: 'error', version, features, message: auth.message });
+  }
+
+  private modelCache?: { version: string; models: ModelInfo[] };
+
+  /** `cursor-agent models`, cached per CLI version; [] if unavailable. */
+  async models(force = false): Promise<ModelInfo[]> {
+    if (this.refreshing) await this.refreshing;
+    if (!this.cli || this.status.state !== 'ready') return [];
+    const version = this.status.version ?? '';
+    if (!force && this.modelCache?.version === version) return this.modelCache.models;
+    const models = await probeModels(this.cli, tmpdir());
+    this.log(`[cli] ${models.length} models`);
+    if (models.length) this.modelCache = { version, models };
+    return models;
   }
 
   /** How to launch `cursor-agent <args>` in a terminal (shellPath + shellArgs, no quoting needed). */

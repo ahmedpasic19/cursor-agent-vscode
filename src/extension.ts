@@ -1,6 +1,9 @@
 import * as vscode from 'vscode';
 import { CliService } from './backend/CliService';
 import { BeforeContentProvider } from './checkpoints/BeforeContentProvider';
+import { registerAddToChat } from './context/commands';
+import { fileChip } from './context/ContextCollector';
+import { FileIndex } from './context/FileIndex';
 import type { Mode } from './shared/events';
 import type { HostMessage, WebviewMessage } from './shared/protocol';
 import { SessionManager } from './session/SessionManager';
@@ -9,7 +12,13 @@ import { WebviewBridge } from './webview/WebviewBridge';
 
 let manager: SessionManager | undefined;
 
-export function activate(context: vscode.ExtensionContext): void {
+/** Returned from activate(); used by integration tests. */
+export interface CursorAgentApi {
+  manager: SessionManager;
+  cliReady(): Promise<unknown>;
+}
+
+export function activate(context: vscode.ExtensionContext): CursorAgentApi {
   const output = vscode.window.createOutputChannel('Cursor Agent');
   context.subscriptions.push(output);
   const log = (line: string) => output.appendLine(`${new Date().toISOString().slice(11, 23)} ${line}`);
@@ -17,6 +26,8 @@ export function activate(context: vscode.ExtensionContext): void {
   const cfg = () => vscode.workspace.getConfiguration('cursorAgent');
   const statusBar = new StatusBar();
   const before = new BeforeContentProvider();
+  const fileIndex = new FileIndex(log);
+  const maxChipLines = () => cfg().get<number>('context.maxChipLines', 2000);
 
   const cli = new CliService(
     () => cfg().get<string>('cliPath', ''),
@@ -64,6 +75,17 @@ export function activate(context: vscode.ExtensionContext): void {
       settings: { defaultMode: cfg().get<Mode>('defaultMode', 'agent') },
     });
     bridge.flushPending();
+    void sendModels();
+  };
+
+  const sendModels = async (force = false) => {
+    const fromCli = await cli.models(force);
+    if (fromCli.length) {
+      bridge.post({ type: 'models/list', models: fromCli, source: 'cli' });
+    } else {
+      const ids = cfg().get<string[]>('models', []);
+      bridge.post({ type: 'models/list', models: ids.map((id) => ({ id, label: id })), source: 'setting' });
+    }
   };
 
   let loginTerminal: vscode.Terminal | undefined;
@@ -92,7 +114,44 @@ export function activate(context: vscode.ExtensionContext): void {
         sendFullState();
         break;
       case 'message/send':
-        mgr.send(msg.tabId, msg.text, msg.mode, msg.model);
+        mgr.send(msg.tabId, msg.text, msg.mode, msg.model, msg.chipIds);
+        break;
+      case 'chip/remove':
+        mgr.getTab(msg.tabId)?.removeChip(msg.chipId);
+        break;
+      case 'mention/search': {
+        const root = mgr.getTab(msg.tabId)?.cwd ?? getCwd();
+        if (!root) {
+          bridge.post({ type: 'mention/results', requestId: msg.requestId, items: [] });
+          break;
+        }
+        void fileIndex.search(root, msg.query).then((items) =>
+          bridge.post({ type: 'mention/results', requestId: msg.requestId, items }),
+        );
+        break;
+      }
+      case 'mention/pick': {
+        const tab = mgr.getTab(msg.tabId);
+        const root = tab?.cwd ?? getCwd();
+        if (!tab || !root) break;
+        void fileChip(vscode.Uri.joinPath(vscode.Uri.file(root), msg.path)).then((chip) => {
+          if (chip) tab.addChip(chip, maxChipLines());
+        });
+        break;
+      }
+      case 'tab/clear':
+        mgr.getTab(msg.tabId)?.clear();
+        break;
+      case 'tab/setModel': {
+        const tab = mgr.getTab(msg.tabId);
+        if (tab) {
+          tab.model = msg.model || undefined;
+          post({ type: 'tab/updated', tab: (({ transcript: _t, chips: _c, ...m }) => m)(tab.snapshot()) });
+        }
+        break;
+      }
+      case 'models/refresh':
+        void sendModels(true);
         break;
       case 'run/stop':
         mgr.stop(msg.tabId);
@@ -154,11 +213,22 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('cursorAgent.cliPath')) void cli.refresh();
     }),
+    fileIndex,
     { dispose: () => mgr.stopAll() },
   );
 
+  registerAddToChat(context, {
+    manager: mgr,
+    reveal: () => bridge.reveal(),
+    focusComposer: () => bridge.post({ type: 'composer/focus' }),
+    notice: (level, text) => bridge.post({ type: 'notice', level, text }),
+    maxChipLines,
+    log,
+  });
+
   log('Cursor Agent activated');
-  void cli.refresh();
+  const ready = cli.refresh();
+  return { manager: mgr, cliReady: () => ready };
 }
 
 export function deactivate(): void {

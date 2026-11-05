@@ -45,7 +45,7 @@ export class WebviewBridge implements vscode.WebviewViewProvider {
   post(msg: HostMessage): void {
     if (!this.view || !this.ready) {
       // Incremental messages are superseded by the state/full sent on `ready`.
-      if (msg.type === 'composer/focus') this.pending.push(msg);
+      if (msg.type === 'composer/focus' || msg.type === 'notice') this.pending.push(msg);
       return;
     }
     void this.view.webview.postMessage(msg);

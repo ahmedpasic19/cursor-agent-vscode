@@ -1,6 +1,7 @@
 import type { AgentBackend, RunHandle } from '../backend/AgentBackend';
 import type { AgentEvent, Mode, RunOutcome } from '../shared/events';
-import type { RunRecord, TabSnapshot, TranscriptItem, UserMessage } from '../shared/protocol';
+import { addChip, type AddResult } from '../context/chips';
+import type { ContextChip, RunRecord, TabSnapshot, TranscriptItem, UserMessage } from '../shared/protocol';
 import { buildPrompt, titleFrom } from './promptBuilder';
 
 let counter = 0;
@@ -18,6 +19,9 @@ export interface TabEvents {
   onRunEvent(tab: TabSession, run: RunRecord, ev: AgentEvent): void;
   onRunFinished(tab: TabSession, run: RunRecord, outcome: RunOutcome): void;
   onTabUpdated(tab: TabSession): void;
+  onChipsUpdated(tab: TabSession): void;
+  /** The tab was cleared (/clear): the webview must replace its copy. */
+  onTabReset(tab: TabSession): void;
 }
 
 /** One chat tab: its CLI session, transcript, and at most one active run. */
@@ -31,6 +35,8 @@ export class TabSession {
   mode: Mode;
   model?: string;
   readonly transcript: TranscriptItem[] = [];
+  /** Context chips waiting for the next message. */
+  chips: ContextChip[] = [];
   private active?: { run: RunRecord; handle?: RunHandle };
 
   constructor(
@@ -56,6 +62,7 @@ export class TabSession {
       model: this.model,
       cwd: this.cwd,
       running: this.running,
+      chips: this.chips,
       transcript: this.transcript,
     };
   }
@@ -64,15 +71,62 @@ export class TabSession {
    * Adds the user message and a queued run record. The run starts when `start()` is
    * called (the SessionManager decides when, to honor the concurrency limit).
    */
-  enqueue(text: string, mode: Mode, model: string | undefined): RunRecord {
+  addChip(chip: ContextChip, maxLines: number): AddResult['action'] {
+    const r = addChip(this.chips, chip, maxLines);
+    this.chips = r.chips;
+    this.events.onChipsUpdated(this);
+    return r.action;
+  }
+
+  removeChip(id: string): void {
+    this.chips = this.chips.filter((c) => c.id !== id);
+    this.events.onChipsUpdated(this);
+  }
+
+  /** Update chips in place (e.g. mark selections whose file changed). */
+  updateChips(fn: (c: ContextChip) => ContextChip): void {
+    let changed = false;
+    this.chips = this.chips.map((c) => {
+      const n = fn(c);
+      if (n !== c) changed = true;
+      return n;
+    });
+    if (changed) this.events.onChipsUpdated(this);
+  }
+
+  /** /clear: forget the CLI session and transcript; keep the tab. */
+  clear(): void {
+    if (this.active) return;
+    this.transcript.length = 0;
+    this.sessionId = undefined;
+    this.sessionMode = undefined;
+    this.title = 'New chat';
+    this.titled = false;
+    this.events.onTabReset(this);
+  }
+
+  enqueue(text: string, mode: Mode, model: string | undefined, chipIds: string[] = [], chipsOverride?: ContextChip[]): RunRecord {
     if (this.active) throw new Error('A run is already active in this tab');
+    // Consume the requested chips (in composer order).
+    const attached = chipsOverride ?? this.chips.filter((c) => chipIds.includes(c.id));
+    if (!chipsOverride && attached.length) {
+      this.chips = this.chips.filter((c) => !chipIds.includes(c.id));
+      this.events.onChipsUpdated(this);
+    }
     this.mode = mode;
     this.model = model || undefined;
     if (!this.titled) {
       this.title = titleFrom(text);
       this.titled = true;
     }
-    const user: UserMessage = { id: newId('msg'), role: 'user', text, mode, at: Date.now() };
+    const user: UserMessage = {
+      id: newId('msg'),
+      role: 'user',
+      text,
+      mode,
+      at: Date.now(),
+      chips: attached.length ? attached : undefined,
+    };
     const run: RunRecord = {
       id: newId('run'),
       role: 'run',
@@ -112,6 +166,7 @@ export class TabSession {
       text: user.text,
       mode: run.mode,
       sessionMode: this.sessionId ? this.sessionMode : undefined,
+      chips: user.chips,
     });
 
     active.handle = backend.run(

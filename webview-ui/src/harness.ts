@@ -8,8 +8,11 @@
  * Host behaviour it fakes: message/send replays the selected fixture, run/retry replays the
  * last one, plan/execute replays `switch-agent` in Agent mode, run/stop cancels the replay.
  */
+import { addChip, chipId } from '../../src/context/chips';
+import { fuzzyFilter, withFolders } from '../../src/context/fuzzy';
 import { CursorStreamParser } from '../../src/parser/cursorStreamJson';
-import type { CliStatus, HostMessage, RunRecord, WebviewMessage } from '../../src/shared/protocol';
+import type { CliStatus, ContextChip, HostMessage, RunRecord, WebviewMessage } from '../../src/shared/protocol';
+import { buildPrompt } from '../../src/session/promptBuilder';
 
 type Mode = RunRecord['mode'];
 
@@ -81,22 +84,69 @@ let n = 0;
 let cancel: (() => void) | undefined;
 let running = false;
 let tabMode: Mode = 'agent';
+let chips: ContextChip[] = [];
+let tabModel: string | undefined;
+let lastPrompt = '';
+
+const FAKE_FILES = withFolders([
+  'src/math.ts',
+  'src/app.ts',
+  'src/booking/api.ts',
+  'src/booking/types.ts',
+  'src/components/Button.tsx',
+  'test/math.test.ts',
+  'README.md',
+  'package.json',
+]);
+const MODELS = [
+  { id: 'auto', label: 'Auto', isDefault: true },
+  { id: 'composer-2.5-fast', label: 'Composer 2.5 Fast' },
+  { id: 'claude-opus-5-5-high', label: 'Claude Opus 5.5 1M High' },
+  { id: 'gpt-5.6-sol-high', label: 'GPT-5.6 Sol 1M High' },
+];
+const MATH_LINES = Array.from({ length: 40 }, (_, i) => `line ${i + 1} of math.ts`);
+
+function setChips(next: ContextChip[]) {
+  chips = next;
+  post({ type: 'chips/updated', tabId: TAB, chips });
+}
+
+function addFake(chip: ContextChip) {
+  const r = addChip(chips, chip, 2000);
+  setChips(r.chips);
+  post({ type: 'composer/focus' });
+  return r.action;
+}
+
+function selection(path: string, a: number, b: number): ContextChip {
+  return {
+    id: chipId(),
+    kind: 'selection',
+    path,
+    absPath: `C:/ws/${path}`,
+    startLine: a,
+    endLine: b,
+    language: 'typescript',
+    text: MATH_LINES.slice(a - 1, b).join('\n'),
+  };
+}
 
 function post(msg: HostMessage) {
   window.postMessage(msg, '*');
 }
 
 function tabMeta() {
-  return { id: TAB, title: current.prompt.slice(0, 30), mode: tabMode, cwd: current.cwd, running };
+  return { id: TAB, title: current.prompt.slice(0, 30), mode: tabMode, model: tabModel, cwd: current.cwd, running };
 }
 
 function reset() {
   cancel?.();
   running = false;
-  post({ type: 'state/full', tabs: [{ ...tabMeta(), transcript: [] }], activeTabId: TAB, cli, settings: { defaultMode: 'agent' } });
+  post({ type: 'state/full', tabs: [{ ...tabMeta(), chips, transcript: [] }], activeTabId: TAB, cli, settings: { defaultMode: 'agent' } });
+  post({ type: 'models/list', models: MODELS, source: 'cli' });
 }
 
-function replay(sc: Scenario, text: string, mode: Mode) {
+function replay(sc: Scenario, text: string, mode: Mode, attached: ContextChip[] = []) {
   cancel?.();
   const parser = new CursorStreamParser({ partialOutput: sc.partial });
   const events = sc.ndjson.split('\n').flatMap((l) => parser.parseLine(l));
@@ -106,7 +156,7 @@ function replay(sc: Scenario, text: string, mode: Mode) {
   post({
     type: 'run/started',
     tabId: TAB,
-    user: { id: `msg_${n}`, role: 'user', text, mode, at: Date.now() },
+    user: { id: `msg_${n}`, role: 'user', text, mode, at: Date.now(), chips: attached.length ? attached : undefined },
     run: { id: runId, role: 'run', mode, status: 'running', events: [], startedAt: Date.now() },
   });
   post({ type: 'tab/updated', tab: tabMeta() });
@@ -160,8 +210,35 @@ function replay(sc: Scenario, text: string, mode: Mode) {
       case 'tab/new':
         reset();
         break;
-      case 'message/send':
-        replay(current, msg.text, msg.mode);
+      case 'message/send': {
+        const attached = chips.filter((c) => msg.chipIds.includes(c.id));
+        lastPrompt = buildPrompt({ text: msg.text, mode: msg.mode, chips: attached });
+        (window as unknown as { __lastPrompt: string }).__lastPrompt = lastPrompt;
+        const pre = document.getElementById('last-prompt');
+        if (pre) pre.textContent = lastPrompt;
+        setChips(chips.filter((c) => !msg.chipIds.includes(c.id)));
+        replay(current, msg.text, msg.mode, attached);
+        break;
+      }
+      case 'chip/remove':
+        setChips(chips.filter((c) => c.id !== msg.chipId));
+        break;
+      case 'mention/search':
+        setTimeout(
+          () => post({ type: 'mention/results', requestId: msg.requestId, items: fuzzyFilter(msg.query, FAKE_FILES, 50) }),
+          30,
+        );
+        break;
+      case 'mention/pick':
+        addFake({ id: chipId(), kind: 'file', path: msg.path, absPath: `C:/ws/${msg.path}`, isFolder: msg.isFolder });
+        break;
+      case 'tab/setModel':
+        tabModel = msg.model;
+        post({ type: 'tab/updated', tab: tabMeta() });
+        break;
+      case 'tab/clear':
+        cancel?.();
+        post({ type: 'tab/reset', tab: { ...tabMeta(), title: 'New chat', chips, transcript: [] } });
         break;
       case 'run/retry':
         replay(current, current.prompt, current.mode);
@@ -226,6 +303,37 @@ function renderPanel() {
     };
     panel.append(b);
   }
+  const h2 = document.createElement('h3');
+  h2.textContent = 'Add to Chat (simulated)';
+  panel.append(h2);
+  const actions: [string, () => void][] = [
+    ['Selection math.ts:10-24', () => addFake(selection('src/math.ts', 10, 24))],
+    ['Selection math.ts:20-30 (overlaps)', () => addFake(selection('src/math.ts', 20, 30))],
+    ['Selection app.ts:3-5', () => addFake(selection('src/app.ts', 3, 5))],
+    ['File booking/types.ts', () => addFake({ id: chipId(), kind: 'file', path: 'src/booking/types.ts', absPath: 'C:/ws/src/booking/types.ts', isFolder: false })],
+    ['Terminal output', () => addFake({ id: chipId(), kind: 'terminal', name: 'pwsh', text: '$ npm test\nFAIL src/math.test.ts\n  ✕ adds numbers', lineCount: 3 })],
+    ['Problems in app.ts', () => addFake({ id: chipId(), kind: 'diagnostics', path: 'src/app.ts', items: [{ path: 'src/app.ts', line: "L12: error ts2339: Property 'x' does not exist on type 'Y'." }] })],
+    ['Selection over limit', () => {
+      const { text: _omit, ...big } = selection('src/big.ts', 1, 5000) as Extract<ContextChip, { kind: 'selection' }>;
+      addFake(big);
+    }],
+    ['Notice', () => post({ type: 'notice', level: 'warning', text: 'Selection has 5000 lines (limit 2000); attached as a path and line range only.' })],
+  ];
+  for (const [label, fn] of actions) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.onclick = fn;
+    panel.append(b);
+  }
+  const h3 = document.createElement('h3');
+  h3.textContent = 'Last prompt sent (stdin)';
+  panel.append(h3);
+  const pre = document.createElement('pre');
+  pre.id = 'last-prompt';
+  pre.style.cssText = 'white-space:pre-wrap;font-size:10px;max-height:240px;overflow:auto;background:#1b1b1b;padding:4px;margin:0';
+  pre.textContent = lastPrompt || '(send a message)';
+  panel.append(pre);
+
   const lbl = document.createElement('label');
   lbl.innerHTML = `Delay per event (ms): <input id="delay" type="number" value="${delay}" style="width:60px">`;
   panel.append(lbl);

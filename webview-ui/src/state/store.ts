@@ -1,12 +1,22 @@
 import { create } from 'zustand';
 import type { Mode } from '../../../src/shared/events';
-import type { CliStatus, HostMessage, RunRecord, TabSnapshot, TranscriptItem } from '../../../src/shared/protocol';
+import type {
+  CliStatus,
+  ContextChip,
+  HostMessage,
+  MentionItem,
+  ModelOption,
+  RunRecord,
+  TabSnapshot,
+  TranscriptItem,
+} from '../../../src/shared/protocol';
 import { applyEvent, buildRunView, type RunView } from '../../../src/shared/transcript';
 
-export type TabMeta = Omit<TabSnapshot, 'transcript'>;
+export type TabMeta = Omit<TabSnapshot, 'transcript' | 'chips'>;
 
 export interface TabState {
   meta: TabMeta;
+  chips: ContextChip[];
   transcript: TranscriptItem[];
   /** Incrementally maintained render model per run id. */
   views: Record<string, RunView>;
@@ -21,14 +31,21 @@ interface Store {
   /** Bumped on every streamed event so subscribers re-render. */
   tick: number;
   focusRequest: number;
+  models: ModelOption[];
+  modelsSource?: 'cli' | 'setting';
+  mention: { requestId: number; items: MentionItem[] };
+  notice?: { id: number; level: 'info' | 'warning' | 'error'; text: string };
   handle(msg: HostMessage): void;
+  dismissNotice(): void;
+  /** Local-only notice (e.g. from a slash command). */
+  showNotice(level: 'info' | 'warning' | 'error', text: string): void;
 }
 
 function tabFromSnapshot(s: TabSnapshot): TabState {
-  const { transcript, ...meta } = s;
+  const { transcript, chips, ...meta } = s;
   const views: Record<string, RunView> = {};
   for (const item of transcript) if (item.role === 'run') views[item.id] = buildRunView(item.events);
-  return { meta, transcript: [...transcript], views };
+  return { meta, chips, transcript: [...transcript], views };
 }
 
 export const useStore = create<Store>((set, get) => ({
@@ -38,6 +55,16 @@ export const useStore = create<Store>((set, get) => ({
   defaultMode: 'agent',
   tick: 0,
   focusRequest: 0,
+  models: [],
+  mention: { requestId: -1, items: [] },
+
+  dismissNotice() {
+    set({ notice: undefined });
+  },
+
+  showNotice(level, text) {
+    set({ notice: { id: Date.now(), level, text } });
+  },
 
   handle(msg) {
     const s = get();
@@ -103,6 +130,25 @@ export const useStore = create<Store>((set, get) => ({
       }
       case 'composer/focus':
         set({ focusRequest: s.focusRequest + 1 });
+        break;
+      case 'tab/reset':
+        set({ tabs: { ...s.tabs, [msg.tab.id]: tabFromSnapshot(msg.tab) }, tick: s.tick + 1 });
+        break;
+      case 'chips/updated': {
+        const tab = s.tabs[msg.tabId];
+        if (!tab) return;
+        set({ tabs: { ...s.tabs, [msg.tabId]: { ...tab, chips: msg.chips } } });
+        break;
+      }
+      case 'mention/results':
+        // Ignore stale responses.
+        if (msg.requestId >= s.mention.requestId) set({ mention: { requestId: msg.requestId, items: msg.items } });
+        break;
+      case 'models/list':
+        set({ models: msg.models, modelsSource: msg.source });
+        break;
+      case 'notice':
+        set({ notice: { id: Date.now(), level: msg.level, text: msg.text } });
         break;
     }
   },

@@ -227,6 +227,7 @@ cursor-agent-vscode/
 - An editor context-menu entry, "Add to Cursor Chat", and a CodeLens-style hover action above the selection are optional, in Phase 6.
 - **Duplicate handling:** the same file and range is not added twice. Overlapping ranges in the same file are merged.
 - **Selection chips snapshot the text** at the moment they are added. If the file changes before sending, the chip shows a small "changed" marker and sends the snapshot. The current file is still available to the agent through the path.
+- **Phase 3 finding:** VS Code sends Ctrl+L in a focused terminal to the shell unless the command is listed in `terminal.integrated.commandsToSkipShell`. The first time Add Terminal to Chat is used (from the terminal context menu or the palette), the extension offers to add it there. That's a user setting, so it asks first.
 - **Terminal selection:** use `Terminal.selection` if the installed VS Code API exposes it. Otherwise, run `workbench.action.terminal.copySelection`, read `vscode.env.clipboard`, and restore the previous clipboard content. If nothing is selected, fall back to the last 200 lines through shell integration's command output, when available.
 - **Size limits:** each chip has a configurable maximum (default 2,000 lines). A chip over the limit is added as a path and line range only, with a warning.
 

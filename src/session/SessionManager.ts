@@ -1,6 +1,6 @@
 import type { AgentBackend } from '../backend/AgentBackend';
 import type { Mode } from '../shared/events';
-import type { HostMessage } from '../shared/protocol';
+import type { ContextChip, HostMessage } from '../shared/protocol';
 import { type RunSettings, TabSession, type TabEvents } from './TabSession';
 
 /** Sent by "Run this plan"; promptBuilder adds the switch-to-agent prefix for plan sessions. */
@@ -31,9 +31,11 @@ export class SessionManager {
     onRunFinished: (tab, run, outcome) =>
       this.deps.post({ type: 'run/finished', tabId: tab.id, runId: run.id, status: run.status, outcome }),
     onTabUpdated: (tab) => {
-      const { transcript: _t, ...meta } = tab.snapshot();
+      const { transcript: _t, chips: _c, ...meta } = tab.snapshot();
       this.deps.post({ type: 'tab/updated', tab: meta });
     },
+    onChipsUpdated: (tab) => this.deps.post({ type: 'chips/updated', tabId: tab.id, chips: tab.chips }),
+    onTabReset: (tab) => this.deps.post({ type: 'tab/reset', tab: tab.snapshot() }),
   };
 
   constructor(private readonly deps: ManagerDeps) {}
@@ -68,10 +70,10 @@ export class SessionManager {
     return this.tabs.find((t) => t.id === id);
   }
 
-  send(tabId: string, text: string, mode: Mode, model: string | undefined): void {
+  send(tabId: string, text: string, mode: Mode, model: string | undefined, chipIds: string[] = [], chipsOverride?: ContextChip[]): void {
     const tab = this.getTab(tabId);
     if (!tab || tab.running) return;
-    tab.enqueue(text, mode, model);
+    tab.enqueue(text, mode, model, chipIds, chipsOverride);
     this.queue.push(tab);
     this.pump();
   }
@@ -81,7 +83,8 @@ export class SessionManager {
     const tab = this.getTab(tabId);
     const last = tab?.lastUserMessage();
     if (!tab || !last || tab.running) return;
-    this.send(tabId, last.text, last.mode, tab.model);
+    // Re-attach the same context snapshot.
+    this.send(tabId, last.text, last.mode, tab.model, [], last.chips ?? []);
   }
 
   /** "Run this plan": resume the same session in Agent mode (docs/CLI_NOTES.md §7). */

@@ -2,13 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Mode } from '../../src/shared/events';
 import { CliBanner } from './components/CliBanner';
 import { Composer } from './components/Composer';
+import { ContextChips } from './components/ContextChips';
+import { Notice } from './components/Notice';
 import { RunMessage } from './components/RunMessage';
 import { TabContext } from './components/tools/util';
 import { useStore } from './state/store';
 import { send } from './vscode';
 
 export function App() {
-  const { tabs, activeTabId, defaultMode, focusRequest, cli } = useStore();
+  const { tabs, activeTabId, defaultMode, focusRequest, cli, models } = useStore();
   useStore((s) => s.tick); // re-render on streamed events
   const tab = activeTabId ? tabs[activeTabId] : undefined;
   const [mode, setMode] = useState<Mode>(defaultMode);
@@ -61,10 +63,13 @@ export function App() {
         <div className="messages" ref={listRef} onScroll={onScroll}>
           {!tab || tab.transcript.length === 0 ? (
             <div className="empty">
-              <p>No messages yet.</p>
+              <p>No chats yet.</p>
               <p className="muted">
-                Type below and press Enter. <b>Agent</b> edits files and runs commands, <b>Ask</b> is read-only,{' '}
-                <b>Plan</b> proposes a plan you can then run. Shift+Tab cycles modes.
+                Select code and press <kbd>Ctrl+L</kbd> to add it, type <kbd>@</kbd> to attach files, or just type below.
+              </p>
+              <p className="muted">
+                <b>Agent</b> edits files and runs commands, <b>Ask</b> is read-only, <b>Plan</b> proposes a plan you can then
+                run. <kbd>Shift+Tab</kbd> cycles modes.
               </p>
             </div>
           ) : (
@@ -72,6 +77,7 @@ export function App() {
               item.role === 'user' ? (
                 <div key={item.id} className="user-msg">
                   <span className={`mode-badge ${item.mode}`}>{item.mode}</span>
+                  {item.chips && <ContextChips chips={item.chips} readOnly />}
                   <div className="user-text">{item.text}</div>
                 </div>
               ) : (
@@ -80,14 +86,22 @@ export function App() {
             )
           )}
         </div>
+        <Notice />
         <Composer
+          tabId={tab?.meta.id}
+          chips={tab?.chips ?? []}
           running={running}
           mode={mode}
+          model={tab?.meta.model}
+          models={models}
           modesSupported={modesSupported}
           disabled={!tab || cli.state === 'notFound'}
           focusRequest={focusRequest}
           onModeChange={setMode}
-          onSend={(text) => tab && send({ type: 'message/send', tabId: tab.meta.id, text, mode, model: tab.meta.model })}
+          onModelChange={(model) => tab && send({ type: 'tab/setModel', tabId: tab.meta.id, model })}
+          onSend={(text, chipIds) =>
+            tab && send({ type: 'message/send', tabId: tab.meta.id, text, mode, model: tab.meta.model, chipIds })
+          }
           onStop={() => tab && send({ type: 'run/stop', tabId: tab.meta.id })}
         />
       </div>

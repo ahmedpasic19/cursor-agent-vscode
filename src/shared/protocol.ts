@@ -2,7 +2,7 @@
  * Webview ↔ host message protocol. Single source of truth (PLAN.md §7).
  * Both sides validate incoming messages with these zod schemas.
  *
- * Phase 1 implements the subset below; later phases extend the unions.
+ * Later phases extend the unions.
  */
 import { z } from 'zod';
 import type { AgentEvent, RunOutcome } from './events';
@@ -18,12 +18,41 @@ const runOutcome = z.custom<RunOutcome>(
 
 // ---------- shared data shapes ----------
 
+/** Add-to-Chat context (PLAN.md §5.4). Paths are workspace-relative with forward slashes. */
+export const ContextChipSchema = z.discriminatedUnion('kind', [
+  z.object({
+    id: z.string(),
+    kind: z.literal('selection'),
+    path: z.string(),
+    absPath: z.string(),
+    startLine: z.number(),
+    endLine: z.number(),
+    language: z.string().optional(),
+    /** Snapshot of the full lines startLine..endLine; absent when over the size limit. */
+    text: z.string().optional(),
+    /** The file changed after the snapshot was taken (the snapshot is still what gets sent). */
+    changed: z.boolean().optional(),
+  }),
+  z.object({ id: z.string(), kind: z.literal('file'), path: z.string(), absPath: z.string(), isFolder: z.boolean() }),
+  z.object({ id: z.string(), kind: z.literal('terminal'), name: z.string(), text: z.string(), lineCount: z.number() }),
+  z.object({
+    id: z.string(),
+    kind: z.literal('diagnostics'),
+    /** Undefined = whole workspace. */
+    path: z.string().optional(),
+    items: z.array(z.object({ path: z.string(), line: z.string() })),
+  }),
+]);
+export type ContextChip = z.infer<typeof ContextChipSchema>;
+
 export const UserMessageSchema = z.object({
   id: z.string(),
   role: z.literal('user'),
   text: z.string(),
   mode: ModeSchema,
   at: z.number(),
+  /** Chips attached to this message (snapshotted at send time). */
+  chips: z.array(ContextChipSchema).optional(),
 });
 export type UserMessage = z.infer<typeof UserMessageSchema>;
 
@@ -51,6 +80,8 @@ export const TabSnapshotSchema = z.object({
   model: z.string().optional(),
   cwd: z.string().optional(),
   running: z.boolean(),
+  /** Chips waiting in the composer for the next message. */
+  chips: z.array(ContextChipSchema),
   transcript: z.array(TranscriptItemSchema),
 });
 export type TabSnapshot = z.infer<typeof TabSnapshotSchema>;
@@ -67,6 +98,12 @@ export const CliStatusSchema = z.object({
 });
 export type CliStatus = z.infer<typeof CliStatusSchema>;
 
+export const ModelOptionSchema = z.object({ id: z.string(), label: z.string(), isDefault: z.boolean().optional() });
+export type ModelOption = z.infer<typeof ModelOptionSchema>;
+
+export const MentionItemSchema = z.object({ path: z.string(), isFolder: z.boolean() });
+export type MentionItem = z.infer<typeof MentionItemSchema>;
+
 // ---------- host → webview ----------
 
 export const HostMessageSchema = z.discriminatedUnion('type', [
@@ -77,7 +114,13 @@ export const HostMessageSchema = z.discriminatedUnion('type', [
     cli: CliStatusSchema,
     settings: z.object({ defaultMode: ModeSchema }),
   }),
-  z.object({ type: z.literal('tab/updated'), tab: TabSnapshotSchema.omit({ transcript: true }) }),
+  z.object({ type: z.literal('tab/updated'), tab: TabSnapshotSchema.omit({ transcript: true, chips: true }) }),
+  z.object({ type: z.literal('tab/reset'), tab: TabSnapshotSchema }),
+  z.object({ type: z.literal('chips/updated'), tabId: z.string(), chips: z.array(ContextChipSchema) }),
+  z.object({ type: z.literal('mention/results'), requestId: z.number(), items: z.array(MentionItemSchema) }),
+  z.object({ type: z.literal('models/list'), models: z.array(ModelOptionSchema), source: z.enum(['cli', 'setting']) }),
+  /** Transient message shown in the panel (e.g. "chip over the size limit"). */
+  z.object({ type: z.literal('notice'), level: z.enum(['info', 'warning', 'error']), text: z.string() }),
   z.object({ type: z.literal('cli/status'), cli: CliStatusSchema }),
   z.object({ type: z.literal('run/started'), tabId: z.string(), user: UserMessageSchema, run: RunRecordSchema }),
   z.object({ type: z.literal('run/event'), tabId: z.string(), runId: z.string(), event: agentEvent }),
@@ -103,7 +146,16 @@ export const WebviewMessageSchema = z.discriminatedUnion('type', [
     text: z.string().min(1),
     mode: ModeSchema,
     model: z.string().optional(),
+    /** Chips to attach (must belong to the tab); they are consumed. */
+    chipIds: z.array(z.string()).default([]),
   }),
+  z.object({ type: z.literal('chip/remove'), tabId: z.string(), chipId: z.string() }),
+  z.object({ type: z.literal('mention/search'), tabId: z.string(), query: z.string(), requestId: z.number() }),
+  z.object({ type: z.literal('mention/pick'), tabId: z.string(), path: z.string(), isFolder: z.boolean() }),
+  /** /clear: start a new CLI session in the same tab. */
+  z.object({ type: z.literal('tab/clear'), tabId: z.string() }),
+  z.object({ type: z.literal('tab/setModel'), tabId: z.string(), model: z.string().optional() }),
+  z.object({ type: z.literal('models/refresh') }),
   z.object({ type: z.literal('run/stop'), tabId: z.string() }),
   /** Resend the last user message of the tab with the same mode. */
   z.object({ type: z.literal('run/retry'), tabId: z.string() }),
