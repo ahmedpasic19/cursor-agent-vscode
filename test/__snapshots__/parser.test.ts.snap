@@ -1,0 +1,1599 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CursorStreamParser on recorded fixtures > agent-edit > matches snapshot 1`] = `
+[
+  {
+    "kind": "init",
+    "model": "Composer 2.5 Fast",
+  },
+  {
+    "kind": "thinking",
+    "text": "Adding",
+  },
+  {
+    "kind": "thinking",
+    "text": " an exported \`sub(a,",
+  },
+  {
+    "kind": "thinking",
+    "text": " b)\` function to math",
+  },
+  {
+    "kind": "thinking",
+    "text": ".ts that returns \`a ",
+  },
+  {
+    "kind": "thinking",
+    "text": "-",
+  },
+  {
+    "kind": "thinking",
+    "text": " b\`.",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "argKeys": [
+      "path",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "read",
+    "resultKeys": undefined,
+    "uiKind": "read",
+  },
+  {
+    "argKeys": [
+      "path",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "read",
+    "resultKeys": [
+      "content",
+      "exceededLimit",
+      "fileSize",
+      "isEmpty",
+      "path",
+      "readRange",
+      "relatedCursorRulePaths",
+      "relatedCursorRules",
+      "totalLines",
+    ],
+    "uiKind": "read",
+  },
+  {
+    "kind": "thinking",
+    "text": "The",
+  },
+  {
+    "kind": "thinking",
+    "text": " file already contains",
+  },
+  {
+    "kind": "thinking",
+    "text": " an \`add\` function.",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "argKeys": [
+      "path",
+      "streamContent",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "edit",
+    "resultKeys": undefined,
+    "uiKind": "edit",
+  },
+  {
+    "argKeys": [
+      "path",
+      "streamContent",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "edit",
+    "resultKeys": [
+      "afterFullFileContent",
+      "beforeFullFileContent",
+      "diffString",
+      "linesAdded",
+      "linesRemoved",
+      "message",
+      "path",
+    ],
+    "uiKind": "edit",
+  },
+  {
+    "kind": "thinking",
+    "text": "Added",
+  },
+  {
+    "kind": "thinking",
+    "text": " the exported \`sub\` ",
+  },
+  {
+    "kind": "thinking",
+    "text": "function",
+  },
+  {
+    "kind": "thinking",
+    "text": " to math.ts. The existing",
+  },
+  {
+    "kind": "thinking",
+    "text": " code and line endings",
+  },
+  {
+    "kind": "thinking",
+    "text": " were preserved. No ",
+  },
+  {
+    "kind": "thinking",
+    "text": "further",
+  },
+  {
+    "kind": "thinking",
+    "text": " changes will be made",
+  },
+  {
+    "kind": "thinking",
+    "text": ".",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "kind": "text",
+    "text": "Added",
+  },
+  {
+    "kind": "text",
+    "text": " exported \`sub(a",
+  },
+  {
+    "kind": "text",
+    "text": ", b)\` to",
+  },
+  {
+    "kind": "text",
+    "text": " \`math.ts\`,",
+  },
+  {
+    "kind": "text",
+    "text": " mirroring \`",
+  },
+  {
+    "kind": "text",
+    "text": "add\` and returning",
+  },
+  {
+    "kind": "text",
+    "text": " \`a - b",
+  },
+  {
+    "kind": "text",
+    "text": "\`. Existing",
+  },
+  {
+    "kind": "text",
+    "text": " code",
+  },
+  {
+    "kind": "text",
+    "text": " is unchanged.",
+  },
+  {
+    "hasUsage": true,
+    "isError": false,
+    "kind": "result",
+  },
+]
+`;
+
+exports[`CursorStreamParser on recorded fixtures > agent-no-partial > matches snapshot 1`] = `
+[
+  {
+    "kind": "init",
+    "model": "Composer 2.5 Fast",
+  },
+  {
+    "kind": "thinking",
+    "text": "Creating",
+  },
+  {
+    "kind": "thinking",
+    "text": " notes.txt with the ",
+  },
+  {
+    "kind": "thinking",
+    "text": "line",
+  },
+  {
+    "kind": "thinking",
+    "text": " "hi." and replying ",
+  },
+  {
+    "kind": "thinking",
+    "text": "with",
+  },
+  {
+    "kind": "thinking",
+    "text": " "done."",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "argKeys": [
+      "path",
+      "streamContent",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "edit",
+    "resultKeys": undefined,
+    "uiKind": "edit",
+  },
+  {
+    "argKeys": [
+      "path",
+      "streamContent",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "edit",
+    "resultKeys": [
+      "afterFullFileContent",
+      "diffString",
+      "linesAdded",
+      "linesRemoved",
+      "message",
+      "path",
+    ],
+    "uiKind": "edit",
+  },
+  {
+    "kind": "thinking",
+    "text": "The",
+  },
+  {
+    "kind": "thinking",
+    "text": " file was created. I",
+  },
+  {
+    "kind": "thinking",
+    "text": " will reply with "done",
+  },
+  {
+    "kind": "thinking",
+    "text": "".",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "kind": "text",
+    "text": "done.",
+  },
+  {
+    "hasUsage": true,
+    "isError": false,
+    "kind": "result",
+  },
+]
+`;
+
+exports[`CursorStreamParser on recorded fixtures > agent-shell > matches snapshot 1`] = `
+[
+  {
+    "kind": "init",
+    "model": "Composer 2.5 Fast",
+  },
+  {
+    "kind": "thinking",
+    "text": "Running",
+  },
+  {
+    "kind": "thinking",
+    "text": " the shell command to",
+  },
+  {
+    "kind": "thinking",
+    "text": " write "hello-from-agent",
+  },
+  {
+    "kind": "thinking",
+    "text": "" to out.txt.",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "argKeys": [
+      "adminCommandDenylist",
+      "closeStdin",
+      "command",
+      "conversationId",
+      "description",
+      "fileOutputThresholdBytes",
+      "hardTimeout",
+      "hasInputRedirect",
+      "hasOutputRedirect",
+      "isBackground",
+      "parsingResult",
+      "requestId",
+      "simpleCommands",
+      "skipApproval",
+      "smartModeClassifierAllowed",
+      "timeout",
+      "timeoutBehavior",
+      "toolCallId",
+      "workingDirectory",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "shell",
+    "resultKeys": undefined,
+    "uiKind": "shell",
+  },
+  {
+    "argKeys": [
+      "adminCommandDenylist",
+      "closeStdin",
+      "command",
+      "conversationId",
+      "description",
+      "fileOutputThresholdBytes",
+      "hardTimeout",
+      "hasInputRedirect",
+      "hasOutputRedirect",
+      "isBackground",
+      "parsingResult",
+      "requestId",
+      "simpleCommands",
+      "skipApproval",
+      "smartModeClassifierAllowed",
+      "timeout",
+      "timeoutBehavior",
+      "toolCallId",
+      "workingDirectory",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "shell",
+    "resultKeys": [
+      "command",
+      "executionTime",
+      "exitCode",
+      "interleavedOutput",
+      "localExecutionTimeMs",
+      "signal",
+      "stderr",
+      "stdout",
+      "workingDirectory",
+    ],
+    "uiKind": "shell",
+  },
+  {
+    "kind": "thinking",
+    "text": "The",
+  },
+  {
+    "kind": "thinking",
+    "text": " command completed successfully",
+  },
+  {
+    "kind": "thinking",
+    "text": ".",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "kind": "text",
+    "text": "done",
+  },
+  {
+    "hasUsage": true,
+    "isError": false,
+    "kind": "result",
+  },
+]
+`;
+
+exports[`CursorStreamParser on recorded fixtures > ask-no-partial > matches snapshot 1`] = `
+[
+  {
+    "kind": "init",
+    "model": "Composer 2.5 Fast",
+  },
+  {
+    "kind": "thinking",
+    "text": "I",
+  },
+  {
+    "kind": "thinking",
+    "text": " need to summarize README",
+  },
+  {
+    "kind": "thinking",
+    "text": ".md in one short sentence",
+  },
+  {
+    "kind": "thinking",
+    "text": ".",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "argKeys": [
+      "globPattern",
+      "targetDirectory",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "glob",
+    "resultKeys": undefined,
+    "uiKind": "search",
+  },
+  {
+    "argKeys": [
+      "globPattern",
+      "targetDirectory",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "glob",
+    "resultKeys": [
+      "clientTruncated",
+      "files",
+      "path",
+      "pattern",
+      "ripgrepTruncated",
+      "totalFiles",
+    ],
+    "uiKind": "search",
+  },
+  {
+    "kind": "thinking",
+    "text": "Found",
+  },
+  {
+    "kind": "thinking",
+    "text": " README.md at the workspace",
+  },
+  {
+    "kind": "thinking",
+    "text": " root. Reading it now",
+  },
+  {
+    "kind": "thinking",
+    "text": ".",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "argKeys": [
+      "path",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "read",
+    "resultKeys": undefined,
+    "uiKind": "read",
+  },
+  {
+    "argKeys": [
+      "path",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "read",
+    "resultKeys": [
+      "content",
+      "exceededLimit",
+      "fileSize",
+      "isEmpty",
+      "path",
+      "readRange",
+      "relatedCursorRulePaths",
+      "relatedCursorRules",
+      "totalLines",
+    ],
+    "uiKind": "read",
+  },
+  {
+    "kind": "thinking",
+    "text": "README",
+  },
+  {
+    "kind": "thinking",
+    "text": ".md contains only a ",
+  },
+  {
+    "kind": "thinking",
+    "text": "single",
+  },
+  {
+    "kind": "thinking",
+    "text": " line: a heading that",
+  },
+  {
+    "kind": "thinking",
+    "text": " says "demo".",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "kind": "text",
+    "text": "The README is a single top-level heading titled “demo” and nothing else.",
+  },
+  {
+    "hasUsage": true,
+    "isError": false,
+    "kind": "result",
+  },
+]
+`;
+
+exports[`CursorStreamParser on recorded fixtures > ask-resume > matches snapshot 1`] = `
+[
+  {
+    "kind": "init",
+    "model": "Composer 2.5 Fast",
+  },
+  {
+    "kind": "thinking",
+    "text": "The",
+  },
+  {
+    "kind": "thinking",
+    "text": " user is asking what",
+  },
+  {
+    "kind": "thinking",
+    "text": " their previous question",
+  },
+  {
+    "kind": "thinking",
+    "text": " was.",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "kind": "text",
+    "text": "Your",
+  },
+  {
+    "kind": "text",
+    "text": " previous question was:",
+  },
+  {
+    "kind": "text",
+    "text": " “",
+  },
+  {
+    "kind": "text",
+    "text": "In one short sentence",
+  },
+  {
+    "kind": "text",
+    "text": ": what does math",
+  },
+  {
+    "kind": "text",
+    "text": ".ts export?”",
+  },
+  {
+    "hasUsage": true,
+    "isError": false,
+    "kind": "result",
+  },
+]
+`;
+
+exports[`CursorStreamParser on recorded fixtures > ask-simple > matches snapshot 1`] = `
+[
+  {
+    "kind": "init",
+    "model": "Composer 2.5 Fast",
+  },
+  {
+    "kind": "thinking",
+    "text": "I",
+  },
+  {
+    "kind": "thinking",
+    "text": " need to determine what",
+  },
+  {
+    "kind": "thinking",
+    "text": " math.ts exports.",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "argKeys": [
+      "globPattern",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "glob",
+    "resultKeys": undefined,
+    "uiKind": "search",
+  },
+  {
+    "argKeys": [
+      "globPattern",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "glob",
+    "resultKeys": [
+      "clientTruncated",
+      "files",
+      "path",
+      "pattern",
+      "ripgrepTruncated",
+      "totalFiles",
+    ],
+    "uiKind": "search",
+  },
+  {
+    "kind": "thinking",
+    "text": "Found",
+  },
+  {
+    "kind": "thinking",
+    "text": " math.ts at the root",
+  },
+  {
+    "kind": "thinking",
+    "text": ". Reading it now.",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "argKeys": [
+      "path",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "read",
+    "resultKeys": undefined,
+    "uiKind": "read",
+  },
+  {
+    "argKeys": [
+      "path",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "read",
+    "resultKeys": [
+      "content",
+      "exceededLimit",
+      "fileSize",
+      "isEmpty",
+      "path",
+      "readRange",
+      "relatedCursorRulePaths",
+      "relatedCursorRules",
+      "totalLines",
+    ],
+    "uiKind": "read",
+  },
+  {
+    "kind": "text",
+    "text": "\`",
+  },
+  {
+    "kind": "text",
+    "text": "math.ts\` exports",
+  },
+  {
+    "kind": "text",
+    "text": " a single function,",
+  },
+  {
+    "kind": "text",
+    "text": " \`add\`, that",
+  },
+  {
+    "kind": "text",
+    "text": " returns",
+  },
+  {
+    "kind": "text",
+    "text": " the sum of two",
+  },
+  {
+    "kind": "text",
+    "text": " numbers.",
+  },
+  {
+    "hasUsage": true,
+    "isError": false,
+    "kind": "result",
+  },
+]
+`;
+
+exports[`CursorStreamParser on recorded fixtures > hang-probe > matches snapshot 1`] = `
+[
+  {
+    "kind": "init",
+    "model": "Composer 2.5 Fast",
+  },
+  {
+    "kind": "text",
+    "text": "p",
+  },
+  {
+    "kind": "text",
+    "text": "ong",
+  },
+  {
+    "hasUsage": true,
+    "isError": false,
+    "kind": "result",
+  },
+]
+`;
+
+exports[`CursorStreamParser on recorded fixtures > invalid-model > matches snapshot 1`] = `[]`;
+
+exports[`CursorStreamParser on recorded fixtures > plan-mode > matches snapshot 1`] = `
+[
+  {
+    "kind": "init",
+    "model": "Composer 2.5 Fast",
+  },
+  {
+    "kind": "thinking",
+    "text": "Draft",
+  },
+  {
+    "kind": "thinking",
+    "text": "ing a three-point plan",
+  },
+  {
+    "kind": "thinking",
+    "text": " to add a multiply function",
+  },
+  {
+    "kind": "thinking",
+    "text": " to math.ts.",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "kind": "text",
+    "text": "Checking",
+  },
+  {
+    "kind": "text",
+    "text": " \`",
+  },
+  {
+    "kind": "text",
+    "text": "math.ts\` and",
+  },
+  {
+    "kind": "text",
+    "text": " how similar functions are",
+  },
+  {
+    "kind": "text",
+    "text": " implemented",
+  },
+  {
+    "kind": "text",
+    "text": ".
+",
+  },
+  {
+    "argKeys": [
+      "globPattern",
+      "targetDirectory",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "glob",
+    "resultKeys": undefined,
+    "uiKind": "search",
+  },
+  {
+    "argKeys": [
+      "globPattern",
+      "targetDirectory",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "glob",
+    "resultKeys": [
+      "clientTruncated",
+      "files",
+      "path",
+      "pattern",
+      "ripgrepTruncated",
+      "totalFiles",
+    ],
+    "uiKind": "search",
+  },
+  {
+    "kind": "thinking",
+    "text": "Found",
+  },
+  {
+    "kind": "thinking",
+    "text": " math.ts. Reviewing ",
+  },
+  {
+    "kind": "thinking",
+    "text": "its",
+  },
+  {
+    "kind": "thinking",
+    "text": " contents and existing",
+  },
+  {
+    "kind": "thinking",
+    "text": " tests.",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "argKeys": [
+      "path",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "read",
+    "resultKeys": undefined,
+    "uiKind": "read",
+  },
+  {
+    "argKeys": [
+      "caseInsensitive",
+      "multiline",
+      "offset",
+      "outputMode",
+      "path",
+      "pattern",
+      "toolCallId",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "grep",
+    "resultKeys": undefined,
+    "uiKind": "search",
+  },
+  {
+    "argKeys": [
+      "path",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "read",
+    "resultKeys": [
+      "content",
+      "exceededLimit",
+      "fileSize",
+      "isEmpty",
+      "path",
+      "readRange",
+      "relatedCursorRulePaths",
+      "relatedCursorRules",
+      "totalLines",
+    ],
+    "uiKind": "read",
+  },
+  {
+    "argKeys": [
+      "caseInsensitive",
+      "multiline",
+      "offset",
+      "outputMode",
+      "path",
+      "pattern",
+      "toolCallId",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "grep",
+    "resultKeys": [
+      "outputMode",
+      "path",
+      "pattern",
+      "workspaceResults",
+    ],
+    "uiKind": "search",
+  },
+  {
+    "kind": "thinking",
+    "text": "The",
+  },
+  {
+    "kind": "thinking",
+    "text": " file currently contains",
+  },
+  {
+    "kind": "thinking",
+    "text": " only an \`add\` function",
+  },
+  {
+    "kind": "thinking",
+    "text": ".",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "kind": "text",
+    "text": "\`math.ts\`",
+  },
+  {
+    "kind": "text",
+    "text": " only exports",
+  },
+  {
+    "kind": "text",
+    "text": " \`add\`; we'll",
+  },
+  {
+    "kind": "text",
+    "text": " mirror that",
+  },
+  {
+    "kind": "text",
+    "text": " pattern for \`multiply",
+  },
+  {
+    "kind": "text",
+    "text": "\`.
+",
+  },
+  {
+    "argKeys": [
+      "isProject",
+      "name",
+      "overview",
+      "phases",
+      "plan",
+      "todos",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "createPlan",
+    "resultKeys": undefined,
+    "uiKind": "plan",
+  },
+  {
+    "argKeys": [
+      "isProject",
+      "name",
+      "overview",
+      "phases",
+      "plan",
+      "todos",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "createPlan",
+    "resultKeys": [],
+    "uiKind": "plan",
+  },
+  {
+    "hasUsage": true,
+    "isError": false,
+    "kind": "result",
+  },
+]
+`;
+
+exports[`CursorStreamParser on recorded fixtures > switch-agent > matches snapshot 1`] = `
+[
+  {
+    "kind": "init",
+    "model": "Composer 2.5 Fast",
+  },
+  {
+    "kind": "thinking",
+    "text": "Adding",
+  },
+  {
+    "kind": "thinking",
+    "text": " a multiply function",
+  },
+  {
+    "kind": "thinking",
+    "text": " to math.ts.",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "argKeys": [
+      "path",
+      "streamContent",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "edit",
+    "resultKeys": undefined,
+    "uiKind": "edit",
+  },
+  {
+    "argKeys": [
+      "path",
+      "streamContent",
+    ],
+    "error": "Cannot edit non markdown files in plan mode",
+    "kind": "toolCompleted",
+    "name": "edit",
+    "resultKeys": undefined,
+    "uiKind": "edit",
+  },
+  {
+    "argKeys": [
+      "globPattern",
+      "targetDirectory",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "glob",
+    "resultKeys": undefined,
+    "uiKind": "search",
+  },
+  {
+    "argKeys": [
+      "globPattern",
+      "targetDirectory",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "glob",
+    "resultKeys": [
+      "clientTruncated",
+      "files",
+      "path",
+      "pattern",
+      "ripgrepTruncated",
+      "totalFiles",
+    ],
+    "uiKind": "search",
+  },
+  {
+    "kind": "thinking",
+    "text": "Switch",
+  },
+  {
+    "kind": "thinking",
+    "text": "ing from plan mode to",
+  },
+  {
+    "kind": "thinking",
+    "text": " agent mode to begin",
+  },
+  {
+    "kind": "thinking",
+    "text": " the edit.",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "argKeys": [
+      "explanation",
+      "targetModeId",
+      "toolCallId",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "switchMode",
+    "resultKeys": undefined,
+    "uiKind": "mode",
+  },
+  {
+    "argKeys": [
+      "explanation",
+      "targetModeId",
+      "toolCallId",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "switchMode",
+    "resultKeys": [
+      "fromModeId",
+      "toModeId",
+    ],
+    "uiKind": "mode",
+  },
+  {
+    "from": "plan",
+    "kind": "modeSwitched",
+    "to": "agent",
+  },
+  {
+    "kind": "thinking",
+    "text": "Implement",
+  },
+  {
+    "kind": "thinking",
+    "text": "ing the multiply function",
+  },
+  {
+    "kind": "thinking",
+    "text": " in math.ts.",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "argKeys": [
+      "path",
+      "streamContent",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "edit",
+    "resultKeys": undefined,
+    "uiKind": "edit",
+  },
+  {
+    "argKeys": [
+      "path",
+      "streamContent",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "edit",
+    "resultKeys": [
+      "afterFullFileContent",
+      "beforeFullFileContent",
+      "diffString",
+      "linesAdded",
+      "linesRemoved",
+      "message",
+      "path",
+    ],
+    "uiKind": "edit",
+  },
+  {
+    "kind": "thinking",
+    "text": "Implementation",
+  },
+  {
+    "kind": "thinking",
+    "text": " complete. No package",
+  },
+  {
+    "kind": "thinking",
+    "text": ".json exists, so type",
+  },
+  {
+    "kind": "thinking",
+    "text": " checking was skipped",
+  },
+  {
+    "kind": "thinking",
+    "text": ".",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "kind": "text",
+    "text": "\`",
+  },
+  {
+    "kind": "text",
+    "text": "multiply\` is in",
+  },
+  {
+    "kind": "text",
+    "text": " [math.ts](",
+  },
+  {
+    "kind": "text",
+    "text": "math.ts),",
+  },
+  {
+    "kind": "text",
+    "text": " exported",
+  },
+  {
+    "kind": "text",
+    "text": " after",
+  },
+  {
+    "kind": "text",
+    "text": " \`sub\`,",
+  },
+  {
+    "kind": "text",
+    "text": " with the same \`(",
+  },
+  {
+    "kind": "text",
+    "text": "a:",
+  },
+  {
+    "kind": "text",
+    "text": " number, b:",
+  },
+  {
+    "kind": "text",
+    "text": " number)\`",
+  },
+  {
+    "kind": "text",
+    "text": " signature as \`add",
+  },
+  {
+    "kind": "text",
+    "text": "\` and \`sub",
+  },
+  {
+    "kind": "text",
+    "text": "\`:
+
+",
+  },
+  {
+    "kind": "text",
+    "text": "\`\`\`9",
+  },
+  {
+    "kind": "text",
+    "text": ":11",
+  },
+  {
+    "kind": "text",
+    "text": ":C",
+  },
+  {
+    "kind": "text",
+    "text": ":\\Users\\K",
+  },
+  {
+    "kind": "text",
+    "text": "orisnik\\AppData",
+  },
+  {
+    "kind": "text",
+    "text": "\\Local\\Temp",
+  },
+  {
+    "kind": "text",
+    "text": "\\cursor-agent-fix",
+  },
+  {
+    "kind": "text",
+    "text": "ture-1TL",
+  },
+  {
+    "kind": "text",
+    "text": "Q8v\\",
+  },
+  {
+    "kind": "text",
+    "text": "math.ts
+export",
+  },
+  {
+    "kind": "text",
+    "text": " function multiply(a:",
+  },
+  {
+    "kind": "text",
+    "text": " number, b:",
+  },
+  {
+    "kind": "text",
+    "text": " number) {
+ ",
+  },
+  {
+    "kind": "text",
+    "text": " return a * b",
+  },
+  {
+    "kind": "text",
+    "text": ";
+}
+\`\`\`
+
+There",
+  },
+  {
+    "kind": "text",
+    "text": "’s",
+  },
+  {
+    "kind": "text",
+    "text": " no \`",
+  },
+  {
+    "kind": "text",
+    "text": "package.json\` in",
+  },
+  {
+    "kind": "text",
+    "text": " this workspace, so",
+  },
+  {
+    "kind": "text",
+    "text": " nothing was run for",
+  },
+  {
+    "kind": "text",
+    "text": " type",
+  },
+  {
+    "kind": "text",
+    "text": "check or",
+  },
+  {
+    "kind": "text",
+    "text": " lint.",
+  },
+  {
+    "hasUsage": true,
+    "isError": false,
+    "kind": "result",
+  },
+]
+`;
+
+exports[`CursorStreamParser on recorded fixtures > switch-plan > matches snapshot 1`] = `
+[
+  {
+    "kind": "init",
+    "model": "Composer 2.5 Fast",
+  },
+  {
+    "kind": "thinking",
+    "text": "Planning",
+  },
+  {
+    "kind": "thinking",
+    "text": " a multiply function",
+  },
+  {
+    "kind": "thinking",
+    "text": " for math.ts.",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "argKeys": [
+      "globPattern",
+      "targetDirectory",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "glob",
+    "resultKeys": undefined,
+    "uiKind": "search",
+  },
+  {
+    "argKeys": [
+      "globPattern",
+      "targetDirectory",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "glob",
+    "resultKeys": [
+      "clientTruncated",
+      "files",
+      "path",
+      "pattern",
+      "ripgrepTruncated",
+      "totalFiles",
+    ],
+    "uiKind": "search",
+  },
+  {
+    "kind": "thinking",
+    "text": "Found",
+  },
+  {
+    "kind": "thinking",
+    "text": " math.ts at the root",
+  },
+  {
+    "kind": "thinking",
+    "text": ". Reading it now.",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "argKeys": [
+      "path",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "read",
+    "resultKeys": undefined,
+    "uiKind": "read",
+  },
+  {
+    "argKeys": [
+      "caseInsensitive",
+      "multiline",
+      "offset",
+      "outputMode",
+      "path",
+      "pattern",
+      "toolCallId",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "grep",
+    "resultKeys": undefined,
+    "uiKind": "search",
+  },
+  {
+    "argKeys": [
+      "path",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "read",
+    "resultKeys": [
+      "content",
+      "exceededLimit",
+      "fileSize",
+      "isEmpty",
+      "path",
+      "readRange",
+      "relatedCursorRulePaths",
+      "relatedCursorRules",
+      "totalLines",
+    ],
+    "uiKind": "read",
+  },
+  {
+    "argKeys": [
+      "caseInsensitive",
+      "multiline",
+      "offset",
+      "outputMode",
+      "path",
+      "pattern",
+      "toolCallId",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "grep",
+    "resultKeys": [
+      "outputMode",
+      "path",
+      "pattern",
+      "workspaceResults",
+    ],
+    "uiKind": "search",
+  },
+  {
+    "kind": "thinking",
+    "text": "The",
+  },
+  {
+    "kind": "thinking",
+    "text": " math.ts file contains",
+  },
+  {
+    "kind": "thinking",
+    "text": " only add and sub. No",
+  },
+  {
+    "kind": "thinking",
+    "text": " tests or imports exist",
+  },
+  {
+    "kind": "thinking",
+    "text": " elsewhere in the workspace",
+  },
+  {
+    "kind": "thinking",
+    "text": ".",
+  },
+  {
+    "kind": "thinkingDone",
+  },
+  {
+    "kind": "text",
+    "text": "Existing",
+  },
+  {
+    "kind": "text",
+    "text": " \`add",
+  },
+  {
+    "kind": "text",
+    "text": "\` and \`sub",
+  },
+  {
+    "kind": "text",
+    "text": "\` follow",
+  },
+  {
+    "kind": "text",
+    "text": " the",
+  },
+  {
+    "kind": "text",
+    "text": " same pattern; drafting",
+  },
+  {
+    "kind": "text",
+    "text": " a minimal",
+  },
+  {
+    "kind": "text",
+    "text": " three-bullet",
+  },
+  {
+    "kind": "text",
+    "text": " plan",
+  },
+  {
+    "kind": "text",
+    "text": ".
+",
+  },
+  {
+    "argKeys": [
+      "isProject",
+      "name",
+      "overview",
+      "phases",
+      "plan",
+      "todos",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "createPlan",
+    "resultKeys": undefined,
+    "uiKind": "plan",
+  },
+  {
+    "argKeys": [
+      "isProject",
+      "name",
+      "overview",
+      "phases",
+      "plan",
+      "todos",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "createPlan",
+    "resultKeys": [],
+    "uiKind": "plan",
+  },
+  {
+    "hasUsage": true,
+    "isError": false,
+    "kind": "result",
+  },
+]
+`;

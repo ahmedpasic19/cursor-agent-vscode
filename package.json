@@ -1,15 +1,199 @@
 {
   "name": "cursor-agent-vscode",
   "displayName": "Cursor Agent",
-  "version": "0.0.1",
-  "private": true,
-  "type": "module",
   "description": "Cursor's agent in a VS Code sidebar chat (personal use).",
+  "version": "0.1.0",
+  "publisher": "local",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
   "engines": {
+    "vscode": "^1.100.0",
     "node": ">=22.18.0"
   },
+  "categories": [
+    "AI",
+    "Chat"
+  ],
+  "main": "./dist/extension.cjs",
+  "files": [
+    "dist/extension.cjs",
+    "dist/webview/index.js",
+    "dist/webview/index.css",
+    "media/icon.svg",
+    "README.md"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "cursorAgent",
+          "title": "Cursor Agent",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "cursorAgent": [
+        {
+          "type": "webview",
+          "id": "cursorAgent.chat",
+          "name": "Chat"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "cursorAgent.newChat",
+        "title": "New Chat",
+        "category": "Cursor Agent",
+        "icon": "$(add)"
+      },
+      {
+        "command": "cursorAgent.focusChat",
+        "title": "Focus Chat",
+        "category": "Cursor Agent"
+      },
+      {
+        "command": "cursorAgent.stop",
+        "title": "Stop Current Run",
+        "category": "Cursor Agent"
+      },
+      {
+        "command": "cursorAgent.showLog",
+        "title": "Show Log",
+        "category": "Cursor Agent"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "cursorAgent.newChat",
+          "when": "view == cursorAgent.chat",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "cursorAgent.focusChat",
+        "key": "ctrl+i",
+        "mac": "cmd+i"
+      }
+    ],
+    "configuration": {
+      "title": "Cursor Agent",
+      "properties": {
+        "cursorAgent.cliPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the cursor-agent CLI (or its node.exe). Empty = auto-detect."
+        },
+        "cursorAgent.defaultMode": {
+          "type": "string",
+          "enum": [
+            "agent",
+            "ask",
+            "plan"
+          ],
+          "default": "agent",
+          "description": "Mode for new messages in a new tab."
+        },
+        "cursorAgent.defaultModel": {
+          "type": "string",
+          "default": "",
+          "description": "Model for new tabs. Empty = CLI default."
+        },
+        "cursorAgent.models": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Fallback model list for the selector, used when `cursor-agent models` fails."
+        },
+        "cursorAgent.maxConcurrentRuns": {
+          "type": "number",
+          "default": 3,
+          "minimum": 1,
+          "description": "Maximum number of runs executing at once."
+        },
+        "cursorAgent.runTimeoutMinutes": {
+          "type": "number",
+          "default": 30,
+          "minimum": 1,
+          "description": "Hard kill timeout per run."
+        },
+        "cursorAgent.postResultGraceMs": {
+          "type": "number",
+          "default": 3000,
+          "minimum": 0,
+          "description": "Wait this long after the `result` event, then kill the process if it is still alive."
+        },
+        "cursorAgent.checkpoints.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Take shadow-git checkpoints before Agent runs."
+        },
+        "cursorAgent.checkpoints.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Extra exclude globs for checkpoints."
+        },
+        "cursorAgent.context.maxChipLines": {
+          "type": "number",
+          "default": 2000,
+          "description": "Maximum lines per context chip."
+        },
+        "cursorAgent.streamPartialOutput": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use --stream-partial-output for token-by-token streaming."
+        },
+        "cursorAgent.extraArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Extra arguments appended to every cursor-agent invocation."
+        }
+      }
+    }
+  },
   "scripts": {
+    "build": "npm run build:ext && npm run build:webview",
+    "build:ext": "node esbuild.mjs",
+    "build:webview": "vite build --config webview-ui/vite.config.ts",
+    "watch:ext": "node esbuild.mjs --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p webview-ui/tsconfig.json --noEmit",
+    "test": "vitest run",
+    "package": "npm run typecheck && npm test && npm run build && vsce package --no-dependencies --allow-missing-repository --skip-license",
     "record": "node scripts/record.ts",
     "record:agent": "node scripts/record-agent-cases.ts"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.2.0",
+    "@types/node": "^22.20.5",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@types/vscode": "^1.100.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "@vscode/vsce": "^4.1.0",
+    "esbuild": "^0.28.2",
+    "markdown-it": "^15.0.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.5",
+    "vitest": "^3.2.7",
+    "zod": "^3.25.76",
+    "zustand": "^5.0.16"
   }
 }
