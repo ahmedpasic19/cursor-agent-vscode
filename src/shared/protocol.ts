@@ -60,6 +60,10 @@ export const CliStatusSchema = z.object({
   version: z.string().optional(),
   email: z.string().optional(),
   message: z.string().optional(),
+  /** CLI features detected from --help; a missing feature disables its UI. */
+  features: z
+    .object({ modes: z.boolean(), partialOutput: z.boolean(), worktree: z.boolean() })
+    .optional(),
 });
 export type CliStatus = z.infer<typeof CliStatusSchema>;
 
@@ -101,7 +105,21 @@ export const WebviewMessageSchema = z.discriminatedUnion('type', [
     model: z.string().optional(),
   }),
   z.object({ type: z.literal('run/stop'), tabId: z.string() }),
-  z.object({ type: z.literal('file/open'), path: z.string(), line: z.number().optional() }),
+  /** Resend the last user message of the tab with the same mode. */
+  z.object({ type: z.literal('run/retry'), tabId: z.string() }),
+  /** "Run this plan": resume the session in Agent mode and implement the plan. */
+  z.object({ type: z.literal('plan/execute'), tabId: z.string() }),
+  z.object({
+    type: z.literal('file/open'),
+    path: z.string(),
+    line: z.number().optional(),
+    endLine: z.number().optional(),
+  }),
+  /** Diff a tool's pre-edit content (from the edit event) against the file on disk. */
+  z.object({ type: z.literal('tool/openDiff'), path: z.string(), before: z.string().optional() }),
+  z.object({ type: z.literal('auth/login') }),
+  z.object({ type: z.literal('cli/refresh') }),
+  z.object({ type: z.literal('settings/open'), query: z.string().optional() }),
   z.object({ type: z.literal('log/show') }),
 ]);
 export type WebviewMessage = z.infer<typeof WebviewMessageSchema>;

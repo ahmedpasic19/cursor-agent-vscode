@@ -6,7 +6,7 @@ import type { AgentEvent, ToolCallInfo, Usage } from './events';
 
 export type Block =
   | { type: 'text'; text: string }
-  | { type: 'thinking'; text: string; done: boolean }
+  | { type: 'thinking'; text: string; done: boolean; startedAt?: number; endedAt?: number }
   | { type: 'tool'; tool: ToolCallInfo; status: 'running' | 'done' | 'error' }
   | { type: 'unknown'; raw: unknown };
 
@@ -40,13 +40,14 @@ export function applyEvent(view: RunView, ev: AgentEvent): RunView {
       break;
     case 'thinking':
       if (last?.type === 'thinking' && !last.done) last.text += ev.text;
-      else blocks.push({ type: 'thinking', text: ev.text, done: false });
+      else blocks.push({ type: 'thinking', text: ev.text, done: false, startedAt: ev.at });
       break;
     case 'thinkingDone':
       for (let i = blocks.length - 1; i >= 0; i--) {
         const b = blocks[i]!;
         if (b.type === 'thinking' && !b.done) {
           b.done = true;
+          b.endedAt = ev.at;
           break;
         }
       }

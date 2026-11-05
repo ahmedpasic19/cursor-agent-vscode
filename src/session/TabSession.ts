@@ -152,6 +152,14 @@ export class TabSession {
     this.events.onTabUpdated(this);
   }
 
+  lastUserMessage(): UserMessage | undefined {
+    for (let i = this.transcript.length - 1; i >= 0; i--) {
+      const item = this.transcript[i]!;
+      if (item.role === 'user') return item;
+    }
+    return undefined;
+  }
+
   /** Fail a queued run before it starts (e.g. CLI not available). */
   failQueued(message: string): void {
     const a = this.active;

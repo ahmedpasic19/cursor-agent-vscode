@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
 import { CliService } from './backend/CliService';
+import { BeforeContentProvider } from './checkpoints/BeforeContentProvider';
 import type { Mode } from './shared/events';
-import type { WebviewMessage } from './shared/protocol';
+import type { HostMessage, WebviewMessage } from './shared/protocol';
 import { SessionManager } from './session/SessionManager';
+import { StatusBar } from './statusBar';
 import { WebviewBridge } from './webview/WebviewBridge';
 
 let manager: SessionManager | undefined;
@@ -13,6 +15,8 @@ export function activate(context: vscode.ExtensionContext): void {
   const log = (line: string) => output.appendLine(`${new Date().toISOString().slice(11, 23)} ${line}`);
 
   const cfg = () => vscode.workspace.getConfiguration('cursorAgent');
+  const statusBar = new StatusBar();
+  const before = new BeforeContentProvider();
 
   const cli = new CliService(
     () => cfg().get<string>('cliPath', ''),
@@ -21,10 +25,18 @@ export function activate(context: vscode.ExtensionContext): void {
       get: (v) => context.globalState.get<string[]>(`caps:${v}`),
       set: (v, flags) => void context.globalState.update(`caps:${v}`, flags),
     },
-    (status) => bridge.post({ type: 'cli/status', cli: status }),
+    (status) => {
+      statusBar.setCli(status);
+      bridge.post({ type: 'cli/status', cli: status });
+    },
   );
 
   const bridge = new WebviewBridge(context.extensionUri, (msg) => handle(msg), log);
+
+  const post = (m: HostMessage) => {
+    bridge.post(m);
+    if (m.type === 'tab/updated') statusBar.setRunning(mgr.runningTabs);
+  };
 
   const mgr = new SessionManager({
     getBackend: () => cli.backend(),
@@ -38,7 +50,7 @@ export function activate(context: vscode.ExtensionContext): void {
     getDefaultMode: () => cfg().get<Mode>('defaultMode', 'agent'),
     getDefaultModel: () => cfg().get<string>('defaultModel', '') || undefined,
     getCwd,
-    post: (m) => bridge.post(m),
+    post,
   });
   manager = mgr;
 
@@ -52,6 +64,22 @@ export function activate(context: vscode.ExtensionContext): void {
       settings: { defaultMode: cfg().get<Mode>('defaultMode', 'agent') },
     });
     bridge.flushPending();
+  };
+
+  let loginTerminal: vscode.Terminal | undefined;
+  const login = () => {
+    if (loginTerminal && loginTerminal.exitStatus === undefined) {
+      loginTerminal.show();
+      return;
+    }
+    const launch = cli.terminalLaunch(['login']);
+    if (launch) {
+      loginTerminal = vscode.window.createTerminal({ name: 'Cursor Agent login', ...launch });
+    } else {
+      loginTerminal = vscode.window.createTerminal({ name: 'Cursor Agent login' });
+      loginTerminal.sendText('cursor-agent login');
+    }
+    loginTerminal.show();
   };
 
   function handle(msg: WebviewMessage): void {
@@ -69,8 +97,26 @@ export function activate(context: vscode.ExtensionContext): void {
       case 'run/stop':
         mgr.stop(msg.tabId);
         break;
+      case 'run/retry':
+        mgr.retry(msg.tabId);
+        break;
+      case 'plan/execute':
+        mgr.executePlan(msg.tabId);
+        break;
       case 'file/open':
-        void openFile(msg.path, msg.line);
+        void openFile(msg.path, msg.line, msg.endLine);
+        break;
+      case 'tool/openDiff':
+        void openBeforeDiff(before, msg.path, msg.before ?? '');
+        break;
+      case 'auth/login':
+        login();
+        break;
+      case 'cli/refresh':
+        void cli.refresh();
+        break;
+      case 'settings/open':
+        void vscode.commands.executeCommand('workbench.action.openSettings', msg.query ?? 'cursorAgent');
         break;
       case 'log/show':
         output.show(true);
@@ -79,6 +125,8 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   context.subscriptions.push(
+    statusBar,
+    vscode.workspace.registerTextDocumentContentProvider(BeforeContentProvider.scheme, before),
     vscode.window.registerWebviewViewProvider(WebviewBridge.viewId, bridge, {
       webviewOptions: { retainContextWhenHidden: true },
     }),
@@ -96,6 +144,13 @@ export function activate(context: vscode.ExtensionContext): void {
       if (mgr.activeTabId) mgr.stop(mgr.activeTabId);
     }),
     vscode.commands.registerCommand('cursorAgent.showLog', () => output.show(true)),
+    vscode.commands.registerCommand('cursorAgent.login', login),
+    vscode.window.onDidCloseTerminal((t) => {
+      if (t === loginTerminal) {
+        loginTerminal = undefined;
+        void cli.refresh();
+      }
+    }),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('cursorAgent.cliPath')) void cli.refresh();
     }),
@@ -117,14 +172,25 @@ function getCwd(): string | undefined {
   return folder?.uri.fsPath;
 }
 
-async function openFile(path: string, line?: number): Promise<void> {
+function resolveUri(path: string): vscode.Uri {
   const root = getCwd();
-  const uri = /^([a-zA-Z]:[\\/]|\/)/.test(path) || !root ? vscode.Uri.file(path) : vscode.Uri.joinPath(vscode.Uri.file(root), path);
+  return /^([a-zA-Z]:[\\/]|\/)/.test(path) || !root ? vscode.Uri.file(path) : vscode.Uri.joinPath(vscode.Uri.file(root), path);
+}
+
+async function openFile(path: string, line?: number, endLine?: number): Promise<void> {
   try {
-    const doc = await vscode.workspace.openTextDocument(uri);
-    const pos = new vscode.Position(Math.max(0, (line ?? 1) - 1), 0);
-    await vscode.window.showTextDocument(doc, { selection: new vscode.Range(pos, pos), preview: true });
+    const doc = await vscode.workspace.openTextDocument(resolveUri(path));
+    const start = new vscode.Position(Math.max(0, (line ?? 1) - 1), 0);
+    const end = endLine && endLine > (line ?? 1) ? new vscode.Position(endLine - 1, Number.MAX_SAFE_INTEGER) : start;
+    await vscode.window.showTextDocument(doc, { selection: new vscode.Range(start, end), preview: true });
   } catch {
     void vscode.window.showWarningMessage(`Could not open ${path}`);
   }
+}
+
+async function openBeforeDiff(provider: BeforeContentProvider, path: string, beforeText: string): Promise<void> {
+  const fileUri = resolveUri(path);
+  const left = provider.register(fileUri.fsPath, beforeText);
+  const name = fileUri.fsPath.split(/[\\/]/).pop();
+  await vscode.commands.executeCommand('vscode.diff', left, fileUri, `${name} (before edit ↔ now)`, { preview: true });
 }

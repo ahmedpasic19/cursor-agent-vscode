@@ -3,6 +3,9 @@ import type { Mode } from '../shared/events';
 import type { HostMessage } from '../shared/protocol';
 import { type RunSettings, TabSession, type TabEvents } from './TabSession';
 
+/** Sent by "Run this plan"; promptBuilder adds the switch-to-agent prefix for plan sessions. */
+export const PLAN_EXECUTE_TEXT = 'Implement the plan above.';
+
 export interface ManagerDeps {
   /** Returns a backend for the current CLI, or an error message if the CLI is unavailable. */
   getBackend(): AgentBackend | string;
@@ -71,6 +74,21 @@ export class SessionManager {
     tab.enqueue(text, mode, model);
     this.queue.push(tab);
     this.pump();
+  }
+
+  /** Resend the tab's last user message with the same mode and model. */
+  retry(tabId: string): void {
+    const tab = this.getTab(tabId);
+    const last = tab?.lastUserMessage();
+    if (!tab || !last || tab.running) return;
+    this.send(tabId, last.text, last.mode, tab.model);
+  }
+
+  /** "Run this plan": resume the same session in Agent mode (docs/CLI_NOTES.md §7). */
+  executePlan(tabId: string): void {
+    const tab = this.getTab(tabId);
+    if (!tab || tab.running) return;
+    this.send(tabId, PLAN_EXECUTE_TEXT, 'agent', tab.model);
   }
 
   stop(tabId: string): void {

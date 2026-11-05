@@ -7,30 +7,37 @@ exports[`CursorStreamParser on recorded fixtures > agent-edit > matches snapshot
     "model": "Composer 2.5 Fast",
   },
   {
+    "at": 1793863176046,
     "kind": "thinking",
     "text": "Adding",
   },
   {
+    "at": 1793863176195,
     "kind": "thinking",
     "text": " an exported \`sub(a,",
   },
   {
+    "at": 1793863176195,
     "kind": "thinking",
     "text": " b)\` function to math",
   },
   {
+    "at": 1793863176235,
     "kind": "thinking",
     "text": ".ts that returns \`a ",
   },
   {
+    "at": 1793863176235,
     "kind": "thinking",
     "text": "-",
   },
   {
+    "at": 1793863176285,
     "kind": "thinking",
     "text": " b\`.",
   },
   {
+    "at": 1793863176285,
     "kind": "thinkingDone",
   },
   {
@@ -64,18 +71,22 @@ exports[`CursorStreamParser on recorded fixtures > agent-edit > matches snapshot
     "uiKind": "read",
   },
   {
+    "at": 1793863177250,
     "kind": "thinking",
     "text": "The",
   },
   {
+    "at": 1793863177286,
     "kind": "thinking",
     "text": " file already contains",
   },
   {
+    "at": 1793863177408,
     "kind": "thinking",
     "text": " an \`add\` function.",
   },
   {
+    "at": 1793863177409,
     "kind": "thinkingDone",
   },
   {
@@ -109,42 +120,52 @@ exports[`CursorStreamParser on recorded fixtures > agent-edit > matches snapshot
     "uiKind": "edit",
   },
   {
+    "at": 1793863178408,
     "kind": "thinking",
     "text": "Added",
   },
   {
+    "at": 1793863178434,
     "kind": "thinking",
     "text": " the exported \`sub\` ",
   },
   {
+    "at": 1793863178435,
     "kind": "thinking",
     "text": "function",
   },
   {
+    "at": 1793863178512,
     "kind": "thinking",
     "text": " to math.ts. The existing",
   },
   {
+    "at": 1793863178576,
     "kind": "thinking",
     "text": " code and line endings",
   },
   {
+    "at": 1793863178611,
     "kind": "thinking",
     "text": " were preserved. No ",
   },
   {
+    "at": 1793863178612,
     "kind": "thinking",
     "text": "further",
   },
   {
+    "at": 1793863178623,
     "kind": "thinking",
     "text": " changes will be made",
   },
   {
+    "at": 1793863178654,
     "kind": "thinking",
     "text": ".",
   },
   {
+    "at": 1793863178654,
     "kind": "thinkingDone",
   },
   {
@@ -202,30 +223,37 @@ exports[`CursorStreamParser on recorded fixtures > agent-no-partial > matches sn
     "model": "Composer 2.5 Fast",
   },
   {
+    "at": 1793863242176,
     "kind": "thinking",
     "text": "Creating",
   },
   {
+    "at": 1793863242237,
     "kind": "thinking",
     "text": " notes.txt with the ",
   },
   {
+    "at": 1793863242237,
     "kind": "thinking",
     "text": "line",
   },
   {
+    "at": 1793863242238,
     "kind": "thinking",
     "text": " "hi." and replying ",
   },
   {
+    "at": 1793863242239,
     "kind": "thinking",
     "text": "with",
   },
   {
+    "at": 1793863242274,
     "kind": "thinking",
     "text": " "done."",
   },
   {
+    "at": 1793863242275,
     "kind": "thinkingDone",
   },
   {
@@ -258,22 +286,27 @@ exports[`CursorStreamParser on recorded fixtures > agent-no-partial > matches sn
     "uiKind": "edit",
   },
   {
+    "at": 1793863243154,
     "kind": "thinking",
     "text": "The",
   },
   {
+    "at": 1793863243177,
     "kind": "thinking",
     "text": " file was created. I",
   },
   {
+    "at": 1793863243198,
     "kind": "thinking",
     "text": " will reply with "done",
   },
   {
+    "at": 1793863243226,
     "kind": "thinking",
     "text": "".",
   },
   {
+    "at": 1793863243226,
     "kind": "thinkingDone",
   },
   {
@@ -295,22 +328,27 @@ exports[`CursorStreamParser on recorded fixtures > agent-shell > matches snapsho
     "model": "Composer 2.5 Fast",
   },
   {
+    "at": 1793863209279,
     "kind": "thinking",
     "text": "Running",
   },
   {
+    "at": 1793863209303,
     "kind": "thinking",
     "text": " the shell command to",
   },
   {
+    "at": 1793863209326,
     "kind": "thinking",
     "text": " write "hello-from-agent",
   },
   {
+    "at": 1793863209372,
     "kind": "thinking",
     "text": "" to out.txt.",
   },
   {
+    "at": 1793863209372,
     "kind": "thinkingDone",
   },
   {
@@ -380,18 +418,22 @@ exports[`CursorStreamParser on recorded fixtures > agent-shell > matches snapsho
     "uiKind": "shell",
   },
   {
+    "at": 1793863212224,
     "kind": "thinking",
     "text": "The",
   },
   {
+    "at": 1793863212271,
     "kind": "thinking",
     "text": " command completed successfully",
   },
   {
+    "at": 1793863212279,
     "kind": "thinking",
     "text": ".",
   },
   {
+    "at": 1793863212279,
     "kind": "thinkingDone",
   },
   {
@@ -413,22 +455,27 @@ exports[`CursorStreamParser on recorded fixtures > ask-no-partial > matches snap
     "model": "Composer 2.5 Fast",
   },
   {
+    "at": 1793862869204,
     "kind": "thinking",
     "text": "I",
   },
   {
+    "at": 1793862869223,
     "kind": "thinking",
     "text": " need to summarize README",
   },
   {
+    "at": 1793862869292,
     "kind": "thinking",
     "text": ".md in one short sentence",
   },
   {
+    "at": 1793862869424,
     "kind": "thinking",
     "text": ".",
   },
   {
+    "at": 1793862869425,
     "kind": "thinkingDone",
   },
   {
@@ -461,22 +508,27 @@ exports[`CursorStreamParser on recorded fixtures > ask-no-partial > matches snap
     "uiKind": "search",
   },
   {
+    "at": 1793862870667,
     "kind": "thinking",
     "text": "Found",
   },
   {
+    "at": 1793862870681,
     "kind": "thinking",
     "text": " README.md at the workspace",
   },
   {
+    "at": 1793862870817,
     "kind": "thinking",
     "text": " root. Reading it now",
   },
   {
+    "at": 1793862870831,
     "kind": "thinking",
     "text": ".",
   },
   {
+    "at": 1793862870831,
     "kind": "thinkingDone",
   },
   {
@@ -510,26 +562,32 @@ exports[`CursorStreamParser on recorded fixtures > ask-no-partial > matches snap
     "uiKind": "read",
   },
   {
+    "at": 1793862871983,
     "kind": "thinking",
     "text": "README",
   },
   {
+    "at": 1793862871998,
     "kind": "thinking",
     "text": ".md contains only a ",
   },
   {
+    "at": 1793862871999,
     "kind": "thinking",
     "text": "single",
   },
   {
+    "at": 1793862872271,
     "kind": "thinking",
     "text": " line: a heading that",
   },
   {
+    "at": 1793862872285,
     "kind": "thinking",
     "text": " says "demo".",
   },
   {
+    "at": 1793862872286,
     "kind": "thinkingDone",
   },
   {
@@ -551,22 +609,27 @@ exports[`CursorStreamParser on recorded fixtures > ask-resume > matches snapshot
     "model": "Composer 2.5 Fast",
   },
   {
+    "at": 1793862901740,
     "kind": "thinking",
     "text": "The",
   },
   {
+    "at": 1793862901760,
     "kind": "thinking",
     "text": " user is asking what",
   },
   {
+    "at": 1793862901779,
     "kind": "thinking",
     "text": " their previous question",
   },
   {
+    "at": 1793862901816,
     "kind": "thinking",
     "text": " was.",
   },
   {
+    "at": 1793862901817,
     "kind": "thinkingDone",
   },
   {
@@ -608,18 +671,22 @@ exports[`CursorStreamParser on recorded fixtures > ask-simple > matches snapshot
     "model": "Composer 2.5 Fast",
   },
   {
+    "at": 1793862746948,
     "kind": "thinking",
     "text": "I",
   },
   {
+    "at": 1793862746968,
     "kind": "thinking",
     "text": " need to determine what",
   },
   {
+    "at": 1793862747017,
     "kind": "thinking",
     "text": " math.ts exports.",
   },
   {
+    "at": 1793862747017,
     "kind": "thinkingDone",
   },
   {
@@ -650,18 +717,22 @@ exports[`CursorStreamParser on recorded fixtures > ask-simple > matches snapshot
     "uiKind": "search",
   },
   {
+    "at": 1793862748069,
     "kind": "thinking",
     "text": "Found",
   },
   {
+    "at": 1793862748070,
     "kind": "thinking",
     "text": " math.ts at the root",
   },
   {
+    "at": 1793862748122,
     "kind": "thinking",
     "text": ". Reading it now.",
   },
   {
+    "at": 1793862748123,
     "kind": "thinkingDone",
   },
   {
@@ -761,22 +832,27 @@ exports[`CursorStreamParser on recorded fixtures > plan-mode > matches snapshot 
     "model": "Composer 2.5 Fast",
   },
   {
+    "at": 1793862825825,
     "kind": "thinking",
     "text": "Draft",
   },
   {
+    "at": 1793862825936,
     "kind": "thinking",
     "text": "ing a three-point plan",
   },
   {
+    "at": 1793862826058,
     "kind": "thinking",
     "text": " to add a multiply function",
   },
   {
+    "at": 1793862826133,
     "kind": "thinking",
     "text": " to math.ts.",
   },
   {
+    "at": 1793862826134,
     "kind": "thinkingDone",
   },
   {
@@ -834,26 +910,32 @@ exports[`CursorStreamParser on recorded fixtures > plan-mode > matches snapshot 
     "uiKind": "search",
   },
   {
+    "at": 1793862827021,
     "kind": "thinking",
     "text": "Found",
   },
   {
+    "at": 1793862827146,
     "kind": "thinking",
     "text": " math.ts. Reviewing ",
   },
   {
+    "at": 1793862827150,
     "kind": "thinking",
     "text": "its",
   },
   {
+    "at": 1793862827160,
     "kind": "thinking",
     "text": " contents and existing",
   },
   {
+    "at": 1793862827200,
     "kind": "thinking",
     "text": " tests.",
   },
   {
+    "at": 1793862827202,
     "kind": "thinkingDone",
   },
   {
@@ -924,22 +1006,27 @@ exports[`CursorStreamParser on recorded fixtures > plan-mode > matches snapshot 
     "uiKind": "search",
   },
   {
+    "at": 1793862828056,
     "kind": "thinking",
     "text": "The",
   },
   {
+    "at": 1793862828072,
     "kind": "thinking",
     "text": " file currently contains",
   },
   {
+    "at": 1793862828101,
     "kind": "thinking",
     "text": " only an \`add\` function",
   },
   {
+    "at": 1793862828153,
     "kind": "thinking",
     "text": ".",
   },
   {
+    "at": 1793862828153,
     "kind": "thinkingDone",
   },
   {
@@ -1012,18 +1099,22 @@ exports[`CursorStreamParser on recorded fixtures > switch-agent > matches snapsh
     "model": "Composer 2.5 Fast",
   },
   {
+    "at": 1793863311889,
     "kind": "thinking",
     "text": "Adding",
   },
   {
+    "at": 1793863311936,
     "kind": "thinking",
     "text": " a multiply function",
   },
   {
+    "at": 1793863312082,
     "kind": "thinking",
     "text": " to math.ts.",
   },
   {
+    "at": 1793863312083,
     "kind": "thinkingDone",
   },
   {
@@ -1078,22 +1169,27 @@ exports[`CursorStreamParser on recorded fixtures > switch-agent > matches snapsh
     "uiKind": "search",
   },
   {
+    "at": 1793863313102,
     "kind": "thinking",
     "text": "Switch",
   },
   {
+    "at": 1793863313169,
     "kind": "thinking",
     "text": "ing from plan mode to",
   },
   {
+    "at": 1793863313189,
     "kind": "thinking",
     "text": " agent mode to begin",
   },
   {
+    "at": 1793863313239,
     "kind": "thinking",
     "text": " the edit.",
   },
   {
+    "at": 1793863313239,
     "kind": "thinkingDone",
   },
   {
@@ -1129,18 +1225,22 @@ exports[`CursorStreamParser on recorded fixtures > switch-agent > matches snapsh
     "to": "agent",
   },
   {
+    "at": 1793863314144,
     "kind": "thinking",
     "text": "Implement",
   },
   {
+    "at": 1793863314185,
     "kind": "thinking",
     "text": "ing the multiply function",
   },
   {
+    "at": 1793863314238,
     "kind": "thinking",
     "text": " in math.ts.",
   },
   {
+    "at": 1793863314239,
     "kind": "thinkingDone",
   },
   {
@@ -1174,26 +1274,32 @@ exports[`CursorStreamParser on recorded fixtures > switch-agent > matches snapsh
     "uiKind": "edit",
   },
   {
+    "at": 1793863315267,
     "kind": "thinking",
     "text": "Implementation",
   },
   {
+    "at": 1793863315372,
     "kind": "thinking",
     "text": " complete. No package",
   },
   {
+    "at": 1793863315396,
     "kind": "thinking",
     "text": ".json exists, so type",
   },
   {
+    "at": 1793863315419,
     "kind": "thinking",
     "text": " checking was skipped",
   },
   {
+    "at": 1793863315489,
     "kind": "thinking",
     "text": ".",
   },
   {
+    "at": 1793863315490,
     "kind": "thinkingDone",
   },
   {
@@ -1367,18 +1473,22 @@ exports[`CursorStreamParser on recorded fixtures > switch-plan > matches snapsho
     "model": "Composer 2.5 Fast",
   },
   {
+    "at": 1793863274978,
     "kind": "thinking",
     "text": "Planning",
   },
   {
+    "at": 1793863274990,
     "kind": "thinking",
     "text": " a multiply function",
   },
   {
+    "at": 1793863275034,
     "kind": "thinking",
     "text": " for math.ts.",
   },
   {
+    "at": 1793863275036,
     "kind": "thinkingDone",
   },
   {
@@ -1411,18 +1521,22 @@ exports[`CursorStreamParser on recorded fixtures > switch-plan > matches snapsho
     "uiKind": "search",
   },
   {
+    "at": 1793863276202,
     "kind": "thinking",
     "text": "Found",
   },
   {
+    "at": 1793863276231,
     "kind": "thinking",
     "text": " math.ts at the root",
   },
   {
+    "at": 1793863276283,
     "kind": "thinking",
     "text": ". Reading it now.",
   },
   {
+    "at": 1793863276283,
     "kind": "thinkingDone",
   },
   {
@@ -1493,30 +1607,37 @@ exports[`CursorStreamParser on recorded fixtures > switch-plan > matches snapsho
     "uiKind": "search",
   },
   {
+    "at": 1793863277480,
     "kind": "thinking",
     "text": "The",
   },
   {
+    "at": 1793863277505,
     "kind": "thinking",
     "text": " math.ts file contains",
   },
   {
+    "at": 1793863277531,
     "kind": "thinking",
     "text": " only add and sub. No",
   },
   {
+    "at": 1793863277591,
     "kind": "thinking",
     "text": " tests or imports exist",
   },
   {
+    "at": 1793863277611,
     "kind": "thinking",
     "text": " elsewhere in the workspace",
   },
   {
+    "at": 1793863277644,
     "kind": "thinking",
     "text": ".",
   },
   {
+    "at": 1793863277644,
     "kind": "thinkingDone",
   },
   {

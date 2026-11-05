@@ -40,8 +40,8 @@ export interface Usage {
 export type AgentEvent =
   | { kind: 'init'; sessionId: string; model?: string; cwd?: string }
   | { kind: 'text'; text: string }
-  | { kind: 'thinking'; text: string }
-  | { kind: 'thinkingDone' }
+  | { kind: 'thinking'; text: string; at?: number }
+  | { kind: 'thinkingDone'; at?: number }
   | { kind: 'toolStarted'; tool: ToolCallInfo }
   | { kind: 'toolCompleted'; tool: ToolCallInfo }
   | { kind: 'modeSwitched'; from?: string; to: string }

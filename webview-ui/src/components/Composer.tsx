@@ -1,15 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { Mode } from '../../../src/shared/events';
-
-const MODES: { id: Mode; label: string; hint: string }[] = [
-  { id: 'agent', label: 'Agent', hint: 'Edits files and runs commands' },
-  { id: 'ask', label: 'Ask', hint: 'Read-only questions' },
-  { id: 'plan', label: 'Plan', hint: 'Proposes a plan, no changes' },
-];
+import { ModeSelect, nextMode } from './ModeSelect';
 
 interface Props {
   running: boolean;
   mode: Mode;
+  modesSupported: boolean;
   disabled?: boolean;
   focusRequest: number;
   onModeChange(mode: Mode): void;
@@ -17,7 +13,13 @@ interface Props {
   onStop(): void;
 }
 
-export function Composer({ running, mode, disabled, focusRequest, onModeChange, onSend, onStop }: Props) {
+const PLACEHOLDER: Record<Mode, string> = {
+  agent: 'Tell the agent what to do… (Enter to send)',
+  ask: 'Ask a question — nothing will be changed… (Enter to send)',
+  plan: 'Describe what to plan — nothing will be changed… (Enter to send)',
+};
+
+export function Composer({ running, mode, modesSupported, disabled, focusRequest, onModeChange, onSend, onStop }: Props) {
   const [text, setText] = useState('');
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -50,36 +52,23 @@ export function Composer({ running, mode, disabled, focusRequest, onModeChange, 
       onStop();
     } else if (e.key === 'Tab' && e.shiftKey) {
       e.preventDefault();
-      const i = MODES.findIndex((m) => m.id === mode);
-      onModeChange(MODES[(i + 1) % MODES.length]!.id);
+      onModeChange(nextMode(mode, modesSupported));
     }
   };
 
   return (
-    <div className="composer">
+    <div className={`composer mode-${mode}`}>
       <textarea
         ref={ref}
         value={text}
         rows={1}
-        placeholder={running ? 'Running… (Esc to stop)' : 'Ask Cursor Agent… (Enter to send, Shift+Enter for newline)'}
+        placeholder={running ? 'Running… (Esc to stop)' : PLACEHOLDER[mode]}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={onKeyDown}
         aria-label="Message"
       />
       <div className="composer-bar">
-        <select
-          className="mode-select"
-          value={mode}
-          onChange={(e) => onModeChange(e.target.value as Mode)}
-          title="Mode (Shift+Tab to cycle)"
-          aria-label="Mode"
-        >
-          {MODES.map((m) => (
-            <option key={m.id} value={m.id} title={m.hint}>
-              {m.label}
-            </option>
-          ))}
-        </select>
+        <ModeSelect mode={mode} modesSupported={modesSupported} onChange={onModeChange} />
         <span className="spacer" />
         {running ? (
           <button className="btn stop" onClick={onStop} title="Stop (Esc)">

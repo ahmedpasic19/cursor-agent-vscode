@@ -2,7 +2,7 @@
   "name": "cursor-agent-vscode",
   "displayName": "Cursor Agent",
   "description": "Cursor's agent in a VS Code sidebar chat (personal use).",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "local",
   "private": true,
   "license": "UNLICENSED",
@@ -65,6 +65,11 @@
       {
         "command": "cursorAgent.showLog",
         "title": "Show Log",
+        "category": "Cursor Agent"
+      },
+      {
+        "command": "cursorAgent.login",
+        "title": "Log In to Cursor",
         "category": "Cursor Agent"
       }
     ],

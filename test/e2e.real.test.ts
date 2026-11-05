@@ -3,7 +3,7 @@
  *   CURSOR_E2E=1 npx vitest run test/e2e.real.test.ts
  * Uses Ask mode only (read-only) in a throwaway temp workspace.
  */
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -66,6 +66,32 @@ describe.skipIf(!enabled)('real cursor-agent', () => {
     const result = second.events.find((e) => e.kind === 'result');
     expect(result && result.kind === 'result' && result.text).toMatch(/math\.ts/);
   }, 180_000);
+
+  it('Plan → "Run this plan" resumes the session in Agent mode and edits the file', async () => {
+    const tab = mgr.newTab();
+    const before = posted.filter((m) => m.type === 'run/finished').length;
+    mgr.send(tab.id, 'Plan (do not implement) adding an exported multiply(a, b) function to math.ts. Two bullets max.', 'plan', model);
+    await waitFinished(before + 1);
+    const planRun = tab.transcript[1] as RunRecord;
+    expect(planRun.status).toBe('success');
+    expect(readFileSync(join(ws, 'math.ts'), 'utf8')).not.toMatch(/multiply/); // plan mode changed nothing
+    const sid = tab.sessionId;
+
+    mgr.executePlan(tab.id);
+    await waitFinished(before + 2);
+    const agentRun = tab.transcript[3] as RunRecord;
+    expect(agentRun.mode).toBe('agent');
+    expect(agentRun.status).toBe('success');
+    expect(tab.sessionId).toBe(sid); // same session resumed
+    const args = log.filter((l) => l.startsWith('[run] args')).at(-1)!;
+    expect(args).toContain('"--force"');
+    expect(args).toContain(`"--resume","${sid}"`);
+    const prompt = log.filter((l) => l.startsWith('[run] prompt')).at(-1)!;
+    expect(prompt).toContain('Switch to agent mode');
+    expect(readFileSync(join(ws, 'math.ts'), 'utf8')).toMatch(/export function multiply/);
+    const failedEdits = agentRun.events.filter((e) => e.kind === 'toolCompleted' && e.tool.uiKind === 'edit' && e.tool.error);
+    console.log(`failed edits before mode switch: ${failedEdits.length}`);
+  }, 300_000);
 
   it('Stop kills the run within 1 second', async () => {
     const tab = mgr.newTab();

@@ -126,3 +126,18 @@ describe('CursorStreamParser edge cases', () => {
     ]);
   });
 });
+
+describe('synthetic fixtures', () => {
+  it('all-cards: unknown events and tools degrade gracefully', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { resolve } = await import('node:path');
+    const lines = readFileSync(resolve(import.meta.dirname, 'synthetic', 'all-cards.ndjson'), 'utf8').split('\n');
+    const events = parseFixture(lines, true);
+    const unknown = events.filter((e) => e.kind === 'unknown');
+    expect(unknown).toHaveLength(2); // brand_new_event + non-JSON line
+    const kinds = events.flatMap((e) => (e.kind === 'toolCompleted' ? [e.tool.uiKind] : []));
+    expect(kinds).toEqual(['search', 'delete', 'shell', 'todo', 'mcp', 'unknown']);
+    const failed = events.find((e) => e.kind === 'toolCompleted' && e.tool.name === 'brandNew');
+    expect(failed && failed.kind === 'toolCompleted' && failed.tool.error).toBe('Something went wrong');
+  });
+});

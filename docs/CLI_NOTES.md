@@ -122,8 +122,12 @@ first edit failed with `Cannot edit non markdown files in plan mode`. Then the a
 
 Implementation consequence:
 - **Plan → Agent ("Run this plan")**: resume the same session with `--force` and send
-  `Switch to agent mode and implement the plan above.` (the explicit "switch" avoids the wasted failed edit).
-  This works end to end. A fallback is a new session with the plan text in the prompt, if the switch ever fails.
+  `Switch to agent mode, then do the following.\n\nImplement the plan above.`
+  Verified end to end in Phase 2 (`test/e2e.real.test.ts`, composer-2.5-fast): same session ID, file edited.
+  **Even with the switch instruction, the model still makes one failed edit first**, then switches, then succeeds.
+  A stronger wording ("call your switch-mode tool before anything else") didn't change this, so the UI shows
+  that failed edit as a muted "blocked by plan mode" card instead of a red failure.
+  A fallback is a new session with the plan text in the prompt, if the switch ever fails.
 - **Agent/Ask → Plan/Ask**: pass `--mode` on resume (the flag applies at start).
 - **Ask → Agent**: same as Plan → Agent: prefix the prompt with the switch instruction.
 - TabSession tracks the session's *current* mode (it updates on `switchModeToolCall` results) so it knows when a prefix is needed.

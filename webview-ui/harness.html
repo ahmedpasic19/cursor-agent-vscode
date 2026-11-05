@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cursor Agent — webview harness</title>
+    <title>Cursor Agent — fixture harness</title>
     <style>
-      /* Approximation of VS Code Dark+ tokens so the webview renders outside VS Code. */
+      /* Approximation of VS Code Dark Modern tokens so the webview renders outside VS Code. */
       :root {
         --vscode-font-family: system-ui, 'Segoe UI', sans-serif;
         --vscode-font-size: 13px;
@@ -13,6 +13,7 @@
         --vscode-foreground: #cccccc;
         --vscode-descriptionForeground: #9d9d9d;
         --vscode-sideBar-background: #181818;
+        --vscode-editor-background: #1f1f1f;
         --vscode-input-background: #313131;
         --vscode-input-foreground: #cccccc;
         --vscode-input-border: #3c3c3c;
@@ -40,12 +41,21 @@
         --vscode-progressBar-background: #0078d4;
         --vscode-charts-green: #89d185;
         --vscode-textBlockQuote-border: #616161;
+        --vscode-terminal-background: #181818;
       }
-      body { margin: 0; }
-      #frame { width: 420px; height: 100vh; border-right: 1px solid #333; }
+      body { margin: 0; display: flex; height: 100vh; background: #111; color: #ccc; font: 13px system-ui, sans-serif; }
+      #panel { width: 240px; padding: 10px; overflow-y: auto; border-right: 1px solid #333; flex: none; }
+      #panel h3 { font-size: 11px; text-transform: uppercase; color: #888; margin: 14px 0 4px; letter-spacing: .05em; }
+      #panel button { display: block; width: 100%; text-align: left; background: none; color: #ccc; border: 1px solid transparent; padding: 3px 6px; cursor: pointer; border-radius: 3px; font: inherit; }
+      #panel button:hover { background: #2a2d2e; }
+      #panel button.active { border-color: #0078d4; background: #04395e; }
+      #panel label { display: block; margin-top: 8px; font-size: 12px; }
+      #panel .hint { font-size: 11px; color: #888; margin-top: 10px; line-height: 1.4; }
+      #frame { width: 420px; height: 100vh; border-right: 1px solid #333; flex: none; }
     </style>
   </head>
   <body>
+    <div id="panel"></div>
     <div id="frame"><div id="root" style="height: 100%"></div></div>
     <script type="module" src="./src/harness.ts"></script>
   </body>

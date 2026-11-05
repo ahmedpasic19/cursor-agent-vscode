@@ -57,9 +57,9 @@ export class CursorStreamParser {
       case 'thinking':
         if (ev.subtype === 'delta') {
           const text = str(ev.text) ?? '';
-          return text ? [{ kind: 'thinking', text }] : [];
+          return text ? [{ kind: 'thinking', text, at: num(ev.timestamp_ms) }] : [];
         }
-        if (ev.subtype === 'completed') return [{ kind: 'thinkingDone' }];
+        if (ev.subtype === 'completed') return [{ kind: 'thinkingDone', at: num(ev.timestamp_ms) }];
         return [{ kind: 'unknown', raw: ev }];
 
       case 'assistant':

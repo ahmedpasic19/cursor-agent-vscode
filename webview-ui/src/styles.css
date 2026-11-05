@@ -387,3 +387,183 @@ button {
     animation: none !important;
   }
 }
+
+/* ---------- Phase 2: per-kind cards ---------- */
+.tool-header-row {
+  display: flex;
+}
+.tool-title.clickable {
+  cursor: pointer;
+}
+.tool-title.clickable:hover .path {
+  text-decoration: underline;
+  color: var(--vscode-textLink-foreground);
+}
+.path,
+.mono {
+  font-family: var(--vscode-editor-font-family);
+}
+.add-count {
+  color: var(--vscode-gitDecoration-addedResourceForeground, var(--vscode-charts-green));
+}
+.del-count {
+  color: var(--vscode-gitDecoration-deletedResourceForeground, var(--vscode-errorForeground));
+}
+.mini-diff {
+  margin: 0;
+  font-family: var(--vscode-editor-font-family);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre;
+  overflow-x: auto;
+}
+.mini-diff .add {
+  background: var(--vscode-diffEditor-insertedLineBackground, rgba(35, 134, 54, 0.2));
+}
+.mini-diff .del {
+  background: var(--vscode-diffEditor-removedLineBackground, rgba(218, 54, 51, 0.2));
+}
+.mini-diff .hunk {
+  color: var(--vscode-descriptionForeground);
+}
+.tool-actions,
+.banner-actions,
+.plan-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.shell-out {
+  margin: 0;
+  font-family: var(--vscode-editor-font-family);
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--vscode-terminal-background, var(--vscode-textCodeBlock-background));
+  color: var(--vscode-terminal-foreground, inherit);
+  padding: 4px 6px;
+  border-radius: 3px;
+}
+.exit-code {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+.exit-code.bad {
+  color: var(--vscode-errorForeground);
+}
+.hit-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+}
+.hit-list li {
+  padding: 1px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hit-list .link {
+  font-family: var(--vscode-editor-font-family);
+}
+.hit-text {
+  color: var(--vscode-descriptionForeground);
+  font-family: var(--vscode-editor-font-family);
+}
+.mode-note {
+  margin: 4px 0;
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+}
+.mode-note.error {
+  color: var(--vscode-errorForeground);
+}
+
+/* Plan card */
+.plan-card {
+  margin: 6px 0;
+  padding: 6px 10px 8px;
+  border: 1px solid var(--vscode-panel-border);
+  border-left: 3px solid var(--vscode-textLink-foreground);
+  border-radius: 4px;
+  background: var(--vscode-editor-background, transparent);
+}
+.plan-header {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.plan-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--vscode-textLink-foreground);
+  font-weight: 600;
+}
+.plan-name {
+  font-weight: 600;
+}
+.todo-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+}
+.todo-list li {
+  padding: 1px 0;
+}
+.todo-box {
+  color: var(--vscode-descriptionForeground);
+}
+
+/* Banners and buttons */
+.btn.secondary {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+}
+.btn.secondary:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+.cli-checking {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+.error-banner .muted {
+  font-weight: normal;
+}
+.mode-select.mode-ask,
+.mode-select.mode-plan {
+  border-color: var(--vscode-textLink-foreground);
+}
+.composer.mode-plan textarea,
+.composer.mode-ask textarea {
+  border-color: var(--vscode-textLink-foreground);
+}
+.markdown h1 {
+  font-size: 1.3em;
+  margin: 10px 0 6px;
+}
+.markdown h2 {
+  font-size: 1.15em;
+  margin: 10px 0 6px;
+}
+.markdown h3,
+.markdown h4 {
+  font-size: 1.05em;
+  margin: 8px 0 4px;
+}
+.plan-card .markdown h1:first-child {
+  display: none; /* duplicates the plan name shown in the card header */
+}
+.tool-card.unknown .tool-icon {
+  color: var(--vscode-descriptionForeground);
+}
+.tool-card.blocked {
+  opacity: 0.7;
+}
+.tool-card.blocked .tool-icon,
+.tool-card.blocked .tool-error {
+  color: var(--vscode-descriptionForeground);
+}
