@@ -1,0 +1,37 @@
+{
+  "name": "agent-shell",
+  "command": "C:\\Users\\Korisnik\\AppData\\Local\\cursor-agent\\versions\\2026.11.05-86047df\\node.exe",
+  "args": [
+    "C:\\Users\\Korisnik\\AppData\\Local\\cursor-agent\\versions\\2026.11.05-86047df\\index.js",
+    "-p",
+    "--trust",
+    "--output-format",
+    "stream-json",
+    "--workspace",
+    "C:\\Users\\Korisnik\\AppData\\Local\\Temp\\cursor-agent-fixture-1TLQ8v",
+    "--model",
+    "composer-2.5-fast",
+    "--stream-partial-output",
+    "--force"
+  ],
+  "cwd": "C:\\Users\\Korisnik\\AppData\\Local\\Temp\\cursor-agent-fixture-1TLQ8v",
+  "prompt": "Run this shell command: echo hello-from-agent > out.txt   Then reply with one word: done.",
+  "exitCode": 0,
+  "signal": null,
+  "firstEventMs": 7236,
+  "resultMs": 13467,
+  "exitMs": 14319,
+  "exitedAfterResultMs": 852,
+  "killedAfterResult": false,
+  "eventTypes": {
+    "system:init": 1,
+    "user": 1,
+    "thinking:delta": 7,
+    "thinking:completed": 2,
+    "tool_call:started": 1,
+    "tool_call:completed": 1,
+    "assistant": 2,
+    "result:success": 1
+  },
+  "recordedAt": "2026-11-05T07:20:13.714Z"
+}

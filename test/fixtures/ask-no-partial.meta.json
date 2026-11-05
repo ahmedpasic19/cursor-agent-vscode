@@ -1,0 +1,37 @@
+{
+  "name": "ask-no-partial",
+  "command": "C:\\Users\\Korisnik\\AppData\\Local\\cursor-agent\\versions\\2026.11.05-86047df\\node.exe",
+  "args": [
+    "C:\\Users\\Korisnik\\AppData\\Local\\cursor-agent\\versions\\2026.11.05-86047df\\index.js",
+    "-p",
+    "--trust",
+    "--output-format",
+    "stream-json",
+    "--workspace",
+    "C:/Users/Korisnik/AppData/Local/Temp/claude/23816dd60d1b00f5/a3219087-074a-4696-8b42-ef7392a42da7/scratchpad/ws",
+    "--model",
+    "composer-2.5-fast",
+    "--mode",
+    "ask"
+  ],
+  "cwd": "C:\\Users\\Korisnik\\AppData\\Local\\Temp\\claude\\23816dd60d1b00f5\\a3219087-074a-4696-8b42-ef7392a42da7\\scratchpad\\ws",
+  "prompt": "In one short sentence: what is in README.md?",
+  "exitCode": 0,
+  "signal": null,
+  "firstEventMs": 7921,
+  "resultMs": 14190,
+  "exitMs": 15069,
+  "exitedAfterResultMs": 879,
+  "killedAfterResult": false,
+  "eventTypes": {
+    "system:init": 1,
+    "user": 1,
+    "thinking:delta": 13,
+    "thinking:completed": 3,
+    "tool_call:started": 2,
+    "tool_call:completed": 2,
+    "assistant": 1,
+    "result:success": 1
+  },
+  "recordedAt": "2026-11-05T07:14:33.732Z"
+}

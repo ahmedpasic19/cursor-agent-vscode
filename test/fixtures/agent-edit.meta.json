@@ -1,0 +1,37 @@
+{
+  "name": "agent-edit",
+  "command": "C:\\Users\\Korisnik\\AppData\\Local\\cursor-agent\\versions\\2026.11.05-86047df\\node.exe",
+  "args": [
+    "C:\\Users\\Korisnik\\AppData\\Local\\cursor-agent\\versions\\2026.11.05-86047df\\index.js",
+    "-p",
+    "--trust",
+    "--output-format",
+    "stream-json",
+    "--workspace",
+    "C:\\Users\\Korisnik\\AppData\\Local\\Temp\\cursor-agent-fixture-1TLQ8v",
+    "--model",
+    "composer-2.5-fast",
+    "--stream-partial-output",
+    "--force"
+  ],
+  "cwd": "C:\\Users\\Korisnik\\AppData\\Local\\Temp\\cursor-agent-fixture-1TLQ8v",
+  "prompt": "In math.ts add an exported function sub(a, b) that returns a - b. Keep the existing code and line endings. Do nothing else.",
+  "exitCode": 0,
+  "signal": null,
+  "firstEventMs": 7614,
+  "resultMs": 13316,
+  "exitMs": 14065,
+  "exitedAfterResultMs": 749,
+  "killedAfterResult": false,
+  "eventTypes": {
+    "system:init": 1,
+    "user": 1,
+    "thinking:delta": 18,
+    "thinking:completed": 3,
+    "tool_call:started": 2,
+    "tool_call:completed": 2,
+    "assistant": 11,
+    "result:success": 1
+  },
+  "recordedAt": "2026-11-05T07:19:39.987Z"
+}

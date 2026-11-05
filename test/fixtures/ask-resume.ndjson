@@ -1,0 +1,15 @@
+{"type":"system","subtype":"init","apiKeySource":"login","cwd":"C:\\Users\\Korisnik\\AppData\\Local\\Temp\\claude\\23816dd60d1b00f5\\a3219087-074a-4696-8b42-ef7392a42da7\\scratchpad\\ws","session_id":"d65a4b1e-2140-45b0-8550-c1fbdcae0e57","model":"Composer 2.5 Fast","permissionMode":"default"}
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"What was my previous question? Answer in one sentence."}]},"session_id":"d65a4b1e-2140-45b0-8550-c1fbdcae0e57"}
+{"type":"thinking","subtype":"delta","text":"The","session_id":"d65a4b1e-2140-45b0-8550-c1fbdcae0e57","timestamp_ms":1793862901740}
+{"type":"thinking","subtype":"delta","text":" user is asking what","session_id":"d65a4b1e-2140-45b0-8550-c1fbdcae0e57","timestamp_ms":1793862901760}
+{"type":"thinking","subtype":"delta","text":" their previous question","session_id":"d65a4b1e-2140-45b0-8550-c1fbdcae0e57","timestamp_ms":1793862901779}
+{"type":"thinking","subtype":"delta","text":" was.","session_id":"d65a4b1e-2140-45b0-8550-c1fbdcae0e57","timestamp_ms":1793862901816}
+{"type":"thinking","subtype":"completed","session_id":"d65a4b1e-2140-45b0-8550-c1fbdcae0e57","timestamp_ms":1793862901817}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Your"}]},"session_id":"d65a4b1e-2140-45b0-8550-c1fbdcae0e57","timestamp_ms":1793862901818}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":" previous question was:"}]},"session_id":"d65a4b1e-2140-45b0-8550-c1fbdcae0e57","timestamp_ms":1793862901818}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":" “"}]},"session_id":"d65a4b1e-2140-45b0-8550-c1fbdcae0e57","timestamp_ms":1793862901819}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"In one short sentence"}]},"session_id":"d65a4b1e-2140-45b0-8550-c1fbdcae0e57","timestamp_ms":1793862901819}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":": what does math"}]},"session_id":"d65a4b1e-2140-45b0-8550-c1fbdcae0e57","timestamp_ms":1793862901819}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":".ts export?”"}]},"session_id":"d65a4b1e-2140-45b0-8550-c1fbdcae0e57","timestamp_ms":1793862901819}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Your previous question was: “In one short sentence: what does math.ts export?”"}]},"session_id":"d65a4b1e-2140-45b0-8550-c1fbdcae0e57"}
+{"type":"result","subtype":"success","duration_ms":2476,"duration_api_ms":2476,"is_error":false,"result":"Your previous question was: “In one short sentence: what does math.ts export?”","session_id":"d65a4b1e-2140-45b0-8550-c1fbdcae0e57","request_id":"e2a8c5e1-09ba-4aff-b051-f784095f5da9","usage":{"inputTokens":147,"outputTokens":62,"cacheReadTokens":13280,"cacheWriteTokens":0}}

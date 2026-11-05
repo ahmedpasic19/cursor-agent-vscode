@@ -1,0 +1,6 @@
+{"type":"system","subtype":"init","apiKeySource":"login","cwd":"C:\\Users\\Korisnik\\AppData\\Local\\Temp\\cursor-agent-fixture-1TLQ8v","session_id":"9a0c09b7-d57d-41c0-a092-1709182644be","model":"Composer 2.5 Fast","permissionMode":"default"}
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"Reply with the single word: pong."}]},"session_id":"9a0c09b7-d57d-41c0-a092-1709182644be"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"p"}]},"session_id":"9a0c09b7-d57d-41c0-a092-1709182644be","timestamp_ms":1793863346241}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"ong"}]},"session_id":"9a0c09b7-d57d-41c0-a092-1709182644be","timestamp_ms":1793863346244}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"pong"}]},"session_id":"9a0c09b7-d57d-41c0-a092-1709182644be"}
+{"type":"result","subtype":"success","duration_ms":3104,"duration_api_ms":3104,"is_error":false,"result":"pong","session_id":"9a0c09b7-d57d-41c0-a092-1709182644be","request_id":"b6e5ca0d-10ba-4221-b9e0-6e50136443c4","usage":{"inputTokens":53,"outputTokens":21,"cacheReadTokens":12640,"cacheWriteTokens":0}}

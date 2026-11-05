@@ -1,0 +1,26 @@
+{
+  "name": "invalid-model",
+  "command": "C:\\Users\\Korisnik\\AppData\\Local\\cursor-agent\\versions\\2026.11.05-86047df\\node.exe",
+  "args": [
+    "C:\\Users\\Korisnik\\AppData\\Local\\cursor-agent\\versions\\2026.11.05-86047df\\index.js",
+    "-p",
+    "--trust",
+    "--output-format",
+    "stream-json",
+    "--workspace",
+    "C:/Users/Korisnik/AppData/Local/Temp/claude/23816dd60d1b00f5/a3219087-074a-4696-8b42-ef7392a42da7/scratchpad/ws",
+    "--model",
+    "no-such-model-xyz"
+  ],
+  "cwd": "C:\\Users\\Korisnik\\AppData\\Local\\Temp\\claude\\23816dd60d1b00f5\\a3219087-074a-4696-8b42-ef7392a42da7\\scratchpad\\ws",
+  "prompt": "hi",
+  "exitCode": 1,
+  "signal": null,
+  "firstEventMs": null,
+  "resultMs": null,
+  "exitMs": 3363,
+  "exitedAfterResultMs": null,
+  "killedAfterResult": false,
+  "eventTypes": {},
+  "recordedAt": "2026-11-05T07:14:18.471Z"
+}
