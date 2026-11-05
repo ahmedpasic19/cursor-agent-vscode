@@ -9,6 +9,7 @@
  *   FAKE_HANG=1       keep running after the `result` line (reproduces the headless hang bug)
  *   FAKE_GRANDCHILD=1 spawn a long-lived child process (tests tree kill); its pid goes to stderr
  *   FAKE_RECORD       file path; argv + stdin are written there as JSON
+ *   FAKE_ACTIONS      JSON file of file writes/deletes applied in cwd before replaying
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { spawn } from 'node:child_process';
@@ -48,6 +49,18 @@ process.stdin.setEncoding('utf8');
 process.stdin.on('data', (d) => (stdin += d));
 process.stdin.on('end', async () => {
   if (process.env.FAKE_RECORD) writeFileSync(process.env.FAKE_RECORD, JSON.stringify({ args, stdin }));
+  // FAKE_ACTIONS: JSON file [{op:"write", path, content} | {op:"delete", path}] applied in cwd,
+  // simulating the agent's edits and shell commands.
+  if (process.env.FAKE_ACTIONS && existsSync(process.env.FAKE_ACTIONS)) {
+    const { mkdirSync, rmSync } = await import('node:fs');
+    for (const a of JSON.parse(readFileSync(process.env.FAKE_ACTIONS, 'utf8'))) {
+      const p = join(process.cwd(), a.path);
+      if (a.op === 'write') {
+        mkdirSync(dirname(p), { recursive: true });
+        writeFileSync(p, a.content);
+      } else if (a.op === 'delete') rmSync(p, { force: true });
+    }
+  }
   for (const line of lines) {
     await new Promise((r) => setTimeout(r, delay));
     process.stdout.write(line + '\n');

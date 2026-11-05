@@ -7,34 +7,8 @@ import * as vscode from 'vscode';
 import type { CursorAgentApi } from '../../src/extension';
 import type { ContextChip } from '../../src/shared/protocol';
 
-const results: { name: string; ok: boolean; error?: string }[] = [];
-
-async function test(name: string, fn: () => Promise<void>) {
-  try {
-    await fn();
-    results.push({ name, ok: true });
-    console.log(`  ✓ ${name}`);
-  } catch (e) {
-    results.push({ name, ok: false, error: String(e instanceof Error ? e.stack : e) });
-    console.log(`  ✗ ${name}\n    ${String(e instanceof Error ? e.message : e)}`);
-  }
-}
-
-function assert(cond: unknown, msg: string): asserts cond {
-  if (!cond) throw new Error(msg);
-}
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-async function waitFor<T>(fn: () => T | undefined | false, timeoutMs: number, what: string): Promise<T> {
-  const t0 = Date.now();
-  while (Date.now() - t0 < timeoutMs) {
-    const v = fn();
-    if (v) return v;
-    await sleep(100);
-  }
-  throw new Error(`Timed out waiting for ${what}`);
-}
+import { checkpointTests } from './checkpoints';
+import { assert, results, sleep, test, waitFor } from './helpers';
 
 function label(c: ContextChip): string {
   if (c.kind === 'selection') return `${c.path}:${c.startLine}-${c.endLine}`;
@@ -181,6 +155,8 @@ export async function run(): Promise<void> {
       await vscode.workspace.getConfiguration('cursorAgent').update('context.maxChipLines', undefined, vscode.ConfigurationTarget.Global);
     }
   });
+
+  await checkpointTests(api, `${process.env.FAKE_RECORD}.actions.json`);
 
   const failed = results.filter((r) => !r.ok);
   console.log(`\n${results.length - failed.length} passed, ${failed.length} failed`);

@@ -147,6 +147,13 @@ export const useStore = create<Store>((set, get) => ({
       case 'models/list':
         set({ models: msg.models, modelsSource: msg.source });
         break;
+      case 'changes/updated': {
+        const tab = s.tabs[msg.tabId];
+        if (!tab) return;
+        const transcript = tab.transcript.map((i) => (i.role === 'run' && i.id === msg.runId ? { ...i, changes: msg.changes } : i));
+        set({ tabs: { ...s.tabs, [msg.tabId]: { ...tab, transcript } }, tick: s.tick + 1 });
+        break;
+      }
       case 'notice':
         set({ notice: { id: Date.now(), level: msg.level, text: msg.text } });
         break;

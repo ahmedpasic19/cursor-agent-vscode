@@ -56,6 +56,27 @@ export const UserMessageSchema = z.object({
 });
 export type UserMessage = z.infer<typeof UserMessageSchema>;
 
+/** One file changed by an Agent run (from the shadow-git pre/post diff). */
+export const ChangedFileSchema = z.object({
+  path: z.string(),
+  status: z.enum(['A', 'M', 'D']),
+  added: z.number(),
+  removed: z.number(),
+  binary: z.boolean(),
+  state: z.enum(['pending', 'kept', 'reverted']),
+});
+export type ChangedFile = z.infer<typeof ChangedFileSchema>;
+
+export const RunChangesSchema = z.object({
+  /** pending: run in progress; ready: diff computed; unavailable: no checkpoint (message says why). */
+  status: z.enum(['pending', 'ready', 'unavailable']),
+  preSha: z.string().optional(),
+  postSha: z.string().optional(),
+  files: z.array(ChangedFileSchema),
+  message: z.string().optional(),
+});
+export type RunChanges = z.infer<typeof RunChangesSchema>;
+
 export const RunRecordSchema = z.object({
   id: z.string(),
   role: z.literal('run'),
@@ -66,6 +87,8 @@ export const RunRecordSchema = z.object({
   outcome: runOutcome.optional(),
   startedAt: z.number(),
   endedAt: z.number().optional(),
+  /** Agent runs only: checkpoint and changed files. */
+  changes: RunChangesSchema.optional(),
 });
 export type RunRecord = z.infer<typeof RunRecordSchema>;
 
@@ -132,6 +155,7 @@ export const HostMessageSchema = z.discriminatedUnion('type', [
     outcome: runOutcome,
   }),
   z.object({ type: z.literal('composer/focus') }),
+  z.object({ type: z.literal('changes/updated'), tabId: z.string(), runId: z.string(), changes: RunChangesSchema }),
 ]);
 export type HostMessage = z.infer<typeof HostMessageSchema>;
 
@@ -156,6 +180,13 @@ export const WebviewMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('tab/clear'), tabId: z.string() }),
   z.object({ type: z.literal('tab/setModel'), tabId: z.string(), model: z.string().optional() }),
   z.object({ type: z.literal('models/refresh') }),
+  z.object({ type: z.literal('changes/openDiff'), tabId: z.string(), runId: z.string(), path: z.string() }),
+  z.object({ type: z.literal('changes/revertFile'), tabId: z.string(), runId: z.string(), path: z.string() }),
+  z.object({ type: z.literal('changes/keepFile'), tabId: z.string(), runId: z.string(), path: z.string() }),
+  z.object({ type: z.literal('changes/revertAll'), tabId: z.string(), runId: z.string() }),
+  z.object({ type: z.literal('changes/keepAll'), tabId: z.string(), runId: z.string() }),
+  /** Restore the files changed by this message's run and every later run to before this message. */
+  z.object({ type: z.literal('checkpoint/restore'), tabId: z.string(), userMessageId: z.string() }),
   z.object({ type: z.literal('run/stop'), tabId: z.string() }),
   /** Resend the last user message of the tab with the same mode. */
   z.object({ type: z.literal('run/retry'), tabId: z.string() }),

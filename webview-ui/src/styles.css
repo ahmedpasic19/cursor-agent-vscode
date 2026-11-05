@@ -769,3 +769,128 @@ kbd {
   border-radius: 3px;
   background: var(--vscode-textCodeBlock-background);
 }
+
+/* ---------- Phase 4: changes card ---------- */
+.changes-note {
+  margin: 6px 0 2px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+.changes-note.warn {
+  color: var(--vscode-editorWarning-foreground, #cca700);
+}
+.changes-card {
+  margin: 8px 0 4px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+}
+.changes-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  font-size: 12px;
+}
+.changes-title {
+  font-weight: 600;
+}
+.btn.small {
+  padding: 0 8px;
+  font-size: 11px;
+  line-height: 18px;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.changes-list {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0;
+}
+.change-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 6px;
+  font-size: 12px;
+}
+.change-row:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+.change-status {
+  width: 12px;
+  text-align: center;
+  font-family: var(--vscode-editor-font-family);
+  font-weight: 600;
+  flex: none;
+}
+.change-status.s-A {
+  color: var(--vscode-gitDecoration-addedResourceForeground, var(--vscode-charts-green));
+}
+.change-status.s-M {
+  color: var(--vscode-gitDecoration-modifiedResourceForeground, #e2c08d);
+}
+.change-status.s-D {
+  color: var(--vscode-gitDecoration-deletedResourceForeground, var(--vscode-errorForeground));
+}
+.change-path {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  text-align: left;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.change-name {
+  color: var(--vscode-foreground);
+}
+.change-path:hover .change-name {
+  text-decoration: underline;
+}
+.change-dir {
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.change-counts {
+  font-family: var(--vscode-editor-font-family);
+  font-size: 11px;
+  flex: none;
+}
+.change-actions {
+  display: flex;
+  flex: none;
+}
+.change-state {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--vscode-descriptionForeground);
+  flex: none;
+}
+.state-reverted .change-name {
+  text-decoration: line-through;
+  color: var(--vscode-descriptionForeground);
+}
+.small {
+  font-size: 11px;
+}
+.restore-btn {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  opacity: 0;
+}
+.user-msg:hover .restore-btn,
+.restore-btn:focus-visible {
+  opacity: 1;
+}
+.restore-btn:disabled {
+  opacity: 0;
+  pointer-events: none;
+}

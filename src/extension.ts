@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { CliService } from './backend/CliService';
 import { BeforeContentProvider } from './checkpoints/BeforeContentProvider';
+import { ChangesController } from './checkpoints/ChangesController';
+import { DiffProvider } from './checkpoints/DiffProvider';
 import { registerAddToChat } from './context/commands';
 import { fileChip } from './context/ContextCollector';
 import { FileIndex } from './context/FileIndex';
@@ -15,6 +17,7 @@ let manager: SessionManager | undefined;
 /** Returned from activate(); used by integration tests. */
 export interface CursorAgentApi {
   manager: SessionManager;
+  changes: ChangesController;
   cliReady(): Promise<unknown>;
 }
 
@@ -49,7 +52,7 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     if (m.type === 'tab/updated') statusBar.setRunning(mgr.runningTabs);
   };
 
-  const mgr = new SessionManager({
+  const mgr: SessionManager = new SessionManager({
     getBackend: () => cli.backend(),
     getRunSettings: () => ({
       partialOutput: cfg().get<boolean>('streamPartialOutput', true),
@@ -62,8 +65,17 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     getDefaultModel: () => cfg().get<string>('defaultModel', '') || undefined,
     getCwd,
     post,
+    getCheckpoints: (root) => changes.sourceFor(root),
   });
   manager = mgr;
+
+  const changes: ChangesController = new ChangesController(context.globalStorageUri, mgr, cfg, log, (tab, run) => {
+    if (run.changes) post({ type: 'changes/updated', tabId: tab.id, runId: run.id, changes: run.changes });
+  });
+  const reportError = (what: string) => (e: unknown) => {
+    log(`[changes] ${what} failed: ${e instanceof Error ? e.stack : String(e)}`);
+    void vscode.window.showErrorMessage(`Cursor Agent: ${what} failed — ${e instanceof Error ? e.message : String(e)}`);
+  };
 
   const sendFullState = () => {
     mgr.ensureTab();
@@ -153,6 +165,24 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
       case 'models/refresh':
         void sendModels(true);
         break;
+      case 'changes/openDiff':
+        changes.openDiff(msg.tabId, msg.runId, msg.path).catch(reportError('Open diff'));
+        break;
+      case 'changes/revertFile':
+        changes.revertFile(msg.tabId, msg.runId, msg.path).catch(reportError('Revert'));
+        break;
+      case 'changes/keepFile':
+        changes.keepFile(msg.tabId, msg.runId, msg.path);
+        break;
+      case 'changes/revertAll':
+        changes.revertAll(msg.tabId, msg.runId).catch(reportError('Revert all'));
+        break;
+      case 'changes/keepAll':
+        changes.keepAll(msg.tabId, msg.runId);
+        break;
+      case 'checkpoint/restore':
+        changes.restoreToMessage(msg.tabId, msg.userMessageId).catch(reportError('Restore'));
+        break;
       case 'run/stop':
         mgr.stop(msg.tabId);
         break;
@@ -186,6 +216,7 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
   context.subscriptions.push(
     statusBar,
     vscode.workspace.registerTextDocumentContentProvider(BeforeContentProvider.scheme, before),
+    vscode.workspace.registerTextDocumentContentProvider(DiffProvider.scheme, new DiffProvider((root) => changes.service(root))),
     vscode.window.registerWebviewViewProvider(WebviewBridge.viewId, bridge, {
       webviewOptions: { retainContextWhenHidden: true },
     }),
@@ -228,7 +259,7 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
 
   log('Cursor Agent activated');
   const ready = cli.refresh();
-  return { manager: mgr, cliReady: () => ready };
+  return { manager: mgr, changes, cliReady: () => ready };
 }
 
 export function deactivate(): void {

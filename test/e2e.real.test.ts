@@ -1,13 +1,14 @@
 /**
  * End-to-end against the REAL cursor-agent (uses model usage). Opt-in:
  *   CURSOR_E2E=1 npx vitest run test/e2e.real.test.ts
- * Uses Ask mode only (read-only) in a throwaway temp workspace.
+ * Runs in a throwaway temp workspace. Agent-mode tests use --force there only.
  */
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CliService } from '../src/backend/CliService';
+import { CheckpointService } from '../src/checkpoints/CheckpointService';
 import { SessionManager } from '../src/session/SessionManager';
 import type { HostMessage, RunRecord } from '../src/shared/protocol';
 
@@ -17,6 +18,7 @@ const model = process.env.CURSOR_E2E_MODEL ?? 'composer-2.5-fast';
 describe.skipIf(!enabled)('real cursor-agent', () => {
   const ws = mkdtempSync(join(tmpdir(), 'cursor-e2e-'));
   writeFileSync(join(ws, 'math.ts'), 'export function add(a: number, b: number) {\n  return a + b;\n}\n');
+  const ckpt = new CheckpointService({ root: ws, gitDir: join(mkdtempSync(join(tmpdir(), 'cursor-e2e-store-')), 'shadow.git') });
   const posted: HostMessage[] = [];
   const log: string[] = [];
   const cli = new CliService(() => '', (l) => log.push(l), { get: () => undefined, set: () => {} }, () => {});
@@ -28,6 +30,7 @@ describe.skipIf(!enabled)('real cursor-agent', () => {
     getDefaultModel: () => model,
     getCwd: () => ws,
     post: (m) => posted.push(m),
+    getCheckpoints: async () => ckpt,
   });
 
   const waitFinished = (n: number) =>
@@ -91,6 +94,36 @@ describe.skipIf(!enabled)('real cursor-agent', () => {
     expect(readFileSync(join(ws, 'math.ts'), 'utf8')).toMatch(/export function multiply/);
     const failedEdits = agentRun.events.filter((e) => e.kind === 'toolCompleted' && e.tool.uiKind === 'edit' && e.tool.error);
     console.log(`failed edits before mode switch: ${failedEdits.length}`);
+  }, 300_000);
+
+  it('Agent run editing two files + a shell command: checkpoint lists all three, revert is byte-exact', async () => {
+    const CRLF = 'export const a = 1;\r\nexport const b = 2;\r\n';
+    writeFileSync(join(ws, 'one.ts'), CRLF);
+    writeFileSync(join(ws, 'two.ts'), 'export const two = 2;\n');
+    const tab = mgr.newTab();
+    const before = posted.filter((m) => m.type === 'run/finished').length;
+    mgr.send(
+      tab.id,
+      'Do exactly these three things and nothing else: (1) in one.ts change `a = 1` to `a = 10`; ' +
+        '(2) in two.ts change `two = 2` to `two = 20`; (3) run this shell command: node -e "require(\'fs\').writeFileSync(\'three.txt\', \'made by shell\')". ' +
+        'Then reply with one word: done.',
+      'agent',
+      model,
+    );
+    await waitFinished(before + 1);
+    const run = tab.transcript[1] as RunRecord;
+    expect(run.status).toBe('success');
+    expect(run.changes?.status).toBe('ready');
+    const files = run.changes!.files.map((f) => `${f.status} ${f.path}`);
+    console.log('changed files:', files);
+    expect(files).toEqual(expect.arrayContaining(['M one.ts', 'M two.ts', 'A three.txt']));
+    const shell = run.events.some((e) => e.kind === 'toolCompleted' && e.tool.uiKind === 'shell');
+    expect(shell).toBe(true);
+    // Revert everything and compare bytes.
+    for (const f of run.changes!.files) await ckpt.restoreFile(run.changes!.preSha!, f.path);
+    expect(readFileSync(join(ws, 'one.ts'))).toEqual(Buffer.from(CRLF));
+    expect(readFileSync(join(ws, 'two.ts'), 'utf8')).toBe('export const two = 2;\n');
+    expect(existsSync(join(ws, 'three.txt'))).toBe(false);
   }, 300_000);
 
   it('Stop kills the run within 1 second', async () => {

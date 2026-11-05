@@ -1,7 +1,7 @@
 import type { AgentBackend } from '../backend/AgentBackend';
 import type { Mode } from '../shared/events';
 import type { ContextChip, HostMessage } from '../shared/protocol';
-import { type RunSettings, TabSession, type TabEvents } from './TabSession';
+import { type CheckpointSource, type RunSettings, TabSession, type TabEvents } from './TabSession';
 
 /** Sent by "Run this plan"; promptBuilder adds the switch-to-agent prefix for plan sessions. */
 export const PLAN_EXECUTE_TEXT = 'Implement the plan above.';
@@ -15,6 +15,8 @@ export interface ManagerDeps {
   getDefaultModel(): string | undefined;
   /** Working directory for a new tab. */
   getCwd(): string | undefined;
+  /** Checkpoints for a workspace root (Agent runs). Optional: tests may omit it. */
+  getCheckpoints?(root: string): Promise<CheckpointSource>;
   post(msg: HostMessage): void;
 }
 
@@ -36,6 +38,9 @@ export class SessionManager {
     },
     onChipsUpdated: (tab) => this.deps.post({ type: 'chips/updated', tabId: tab.id, chips: tab.chips }),
     onTabReset: (tab) => this.deps.post({ type: 'tab/reset', tab: tab.snapshot() }),
+    onRunChanges: (tab, run) => {
+      if (run.changes) this.deps.post({ type: 'changes/updated', tabId: tab.id, runId: run.id, changes: run.changes });
+    },
   };
 
   constructor(private readonly deps: ManagerDeps) {}
@@ -122,7 +127,10 @@ export class SessionManager {
         settled();
         continue;
       }
-      tab.start(backend, this.deps.getRunSettings()).then(settled, settled);
+      const ck = tab.cwd && this.deps.getCheckpoints ? this.deps.getCheckpoints(tab.cwd) : Promise.resolve(undefined);
+      ck.catch(() => undefined)
+        .then((c) => tab.start(backend, this.deps.getRunSettings(), c))
+        .then(settled, settled);
     }
   }
 }

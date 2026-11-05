@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { RunRecord } from '../../../src/shared/protocol';
 import type { Block, RunView } from '../../../src/shared/transcript';
 import { send } from '../vscode';
+import { ChangesCard } from './ChangesCard';
 import { ErrorBanner } from './ErrorBanner';
 import { Markdown } from './Markdown';
 import { ToolCard, UnknownCard } from './tools/ToolCard';
@@ -87,6 +88,7 @@ export function RunMessage({ run, view, isLatest }: Props) {
         </div>
       )}
       {!active && run.status === 'success' && footer.length > 0 && <div className="run-footer">{footer.join(' · ')}</div>}
+      {run.changes && <ChangesCard runId={run.id} changes={run.changes} runActive={active} />}
     </div>
   );
 }

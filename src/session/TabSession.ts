@@ -1,8 +1,12 @@
 import type { AgentBackend, RunHandle } from '../backend/AgentBackend';
+import type { CheckpointService } from '../checkpoints/CheckpointService';
 import type { AgentEvent, Mode, RunOutcome } from '../shared/events';
 import { addChip, type AddResult } from '../context/chips';
 import type { ContextChip, RunRecord, TabSnapshot, TranscriptItem, UserMessage } from '../shared/protocol';
 import { buildPrompt, titleFrom } from './promptBuilder';
+
+/** Placeholder while a run is starting (taking its checkpoint). */
+const PENDING_HANDLE: RunHandle = { done: new Promise(() => {}), stop: () => {} };
 
 let counter = 0;
 export const newId = (prefix: string) => `${prefix}_${Date.now().toString(36)}_${(counter++).toString(36)}`;
@@ -22,7 +26,11 @@ export interface TabEvents {
   onChipsUpdated(tab: TabSession): void;
   /** The tab was cleared (/clear): the webview must replace its copy. */
   onTabReset(tab: TabSession): void;
+  onRunChanges(tab: TabSession, run: RunRecord): void;
 }
+
+/** A checkpoint service for this tab's root, or a reason why checkpoints are off. */
+export type CheckpointSource = CheckpointService | { unavailable: string } | undefined;
 
 /** One chat tab: its CLI session, transcript, and at most one active run. */
 export class TabSession {
@@ -144,11 +152,13 @@ export class TabSession {
   }
 
   /** Starts the queued run. Resolves when it finishes. */
-  async start(backend: AgentBackend, settings: RunSettings): Promise<void> {
+  async start(backend: AgentBackend, settings: RunSettings, checkpoints?: CheckpointSource): Promise<void> {
     const active = this.active;
     if (!active || active.handle) return;
     const run = active.run;
     const user = this.transcript[this.transcript.length - 2] as UserMessage;
+    // Guard against starting twice while the pre-snapshot is being taken.
+    active.handle = PENDING_HANDLE;
 
     if (!this.cwd) {
       this.finish(run, {
@@ -162,6 +172,35 @@ export class TabSession {
 
     run.status = 'running';
     run.startedAt = Date.now();
+
+    // Checkpoint before Agent runs (PLAN.md 5.6).
+    let ckpt: CheckpointService | undefined;
+    let preSha: string | undefined;
+    if (run.mode === 'agent' && checkpoints) {
+      if ('unavailable' in checkpoints) {
+        run.changes = { status: 'unavailable', files: [], message: checkpoints.unavailable };
+      } else {
+        try {
+          preSha = await checkpoints.snapshot(`pre:${this.id}:${run.id}`);
+          ckpt = checkpoints;
+          run.changes = { status: 'pending', preSha, files: [] };
+        } catch (e) {
+          run.changes = {
+            status: 'unavailable',
+            files: [],
+            message: `Checkpoint failed (${e instanceof Error ? e.message : String(e)}); this run has no undo.`,
+          };
+        }
+      }
+      // Stopped while the snapshot was being taken: nothing ran, nothing changed.
+      if (this.active?.run !== run) {
+        if (preSha) run.changes = { status: 'ready', preSha, postSha: preSha, files: [] };
+        this.events.onRunChanges(this, run);
+        return;
+      }
+      this.events.onRunChanges(this, run);
+    }
+
     const prompt = buildPrompt({
       text: user.text,
       mode: run.mode,
@@ -194,7 +233,27 @@ export class TabSession {
     // effect once the agent calls switchMode (handled in the event callback above).
     if (run.mode !== 'agent' || !this.sessionMode) this.sessionMode = run.mode;
     const outcome = await active.handle.done;
+    if (ckpt && preSha) {
+      // Diff even after errors/stops: the agent may have changed files before failing.
+      try {
+        const postSha = await ckpt.snapshot(`post:${this.id}:${run.id}`);
+        const files = await ckpt.diff(preSha, postSha);
+        run.changes = { status: 'ready', preSha, postSha, files: files.map((f) => ({ ...f, state: 'pending' as const })) };
+      } catch (e) {
+        run.changes = {
+          status: 'unavailable',
+          preSha,
+          files: [],
+          message: `Could not compute changes: ${e instanceof Error ? e.message : String(e)}`,
+        };
+      }
+      this.events.onRunChanges(this, run);
+    }
     this.finish(run, outcome);
+  }
+
+  findRun(runId: string): RunRecord | undefined {
+    return this.transcript.find((i): i is RunRecord => i.role === 'run' && i.id === runId);
   }
 
   private finish(run: RunRecord, outcome: RunOutcome): void {
@@ -218,14 +277,14 @@ export class TabSession {
   /** Fail a queued run before it starts (e.g. CLI not available). */
   failQueued(message: string): void {
     const a = this.active;
-    if (a && !a.handle) this.finish(a.run, { status: 'error', exitCode: null, stderrTail: [], message });
+    if (a && (!a.handle || a.handle === PENDING_HANDLE)) this.finish(a.run, { status: 'error', exitCode: null, stderrTail: [], message });
   }
 
   /** Stop the active run (or drop it from the queue). */
   stop(): void {
     const a = this.active;
     if (!a) return;
-    if (a.handle) a.handle.stop();
+    if (a.handle && a.handle !== PENDING_HANDLE) a.handle.stop();
     else this.finish(a.run, { status: 'stopped', exitCode: null, stderrTail: [] });
   }
 }

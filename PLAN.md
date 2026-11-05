@@ -298,6 +298,12 @@ The **shadow git repository** follows the approach Cline uses for checkpoints. I
 
 **Restore checkpoint:** any earlier user message has "Restore code to before this message", which restores that run's changed files.
 
+**Phase 4 notes (as built):**
+- "Restore to before this message" restores every file changed by that message's run *and all later runs* in the tab, back to that run's pre-checkpoint. It asks first and lists files edited since.
+- The shadow repo's `info/attributes` forces `-text` and unsets filters, and `core.autocrlf=false` is set on every call. Blobs are the exact file bytes, even if the user's repo has `autocrlf` or `eol` attributes.
+- Hooks, GPG signing and inherited `GIT_*` environment variables are neutralized for shadow-git calls.
+- Known limit for Phase 5: if two Agent runs overlap in time, each run's pre/post diff also contains the other run's edits. The conflict banner (5.1) and the per-file "changed since" check reduce the risk, but they don't separate the two runs.
+
 ### 5.7 History and persistence
 
 - **HistoryStore** saves one JSON file per chat under `globalStorageUri/<workspaceHash>/chats/<chatId>.json`. Each file holds:

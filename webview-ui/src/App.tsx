@@ -44,6 +44,18 @@ export function App() {
     for (let i = t.length - 1; i >= 0; i--) if (t[i]!.role === 'run') return t[i]!.id;
     return undefined;
   }, [tab?.transcript]);
+  // User messages from which "Restore code to before this message" can act.
+  const restorable = useMemo(() => {
+    const t = tab?.transcript ?? [];
+    const ids = new Set<string>();
+    let later = false;
+    for (let i = t.length - 1; i >= 0; i--) {
+      const it = t[i]!;
+      if (it.role === 'run' && it.changes?.status === 'ready' && it.changes.files.some((f) => f.state !== 'reverted')) later = true;
+      if (it.role === 'user' && later) ids.add(it.id);
+    }
+    return ids;
+  }, [tab?.transcript]);
   const ctx = useMemo(() => ({ tabId: tab?.meta.id ?? '', cwd: tab?.meta.cwd, running }), [tab?.meta.id, tab?.meta.cwd, running]);
 
   return (
@@ -79,6 +91,16 @@ export function App() {
                   <span className={`mode-badge ${item.mode}`}>{item.mode}</span>
                   {item.chips && <ContextChips chips={item.chips} readOnly />}
                   <div className="user-text">{item.text}</div>
+                  {restorable.has(item.id) && (
+                    <button
+                      className="restore-btn link"
+                      disabled={running}
+                      title="Restore every file changed from this message on to how it was before (asks first)"
+                      onClick={() => send({ type: 'checkpoint/restore', tabId: tab.meta.id, userMessageId: item.id })}
+                    >
+                      ↶ Restore code to before this message
+                    </button>
+                  )}
                 </div>
               ) : (
                 <RunMessage key={item.id} run={item} view={tab.views[item.id]!} isLatest={item.id === latestRunId} />

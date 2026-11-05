@@ -11,7 +11,7 @@
 import { addChip, chipId } from '../../src/context/chips';
 import { fuzzyFilter, withFolders } from '../../src/context/fuzzy';
 import { CursorStreamParser } from '../../src/parser/cursorStreamJson';
-import type { CliStatus, ContextChip, HostMessage, RunRecord, WebviewMessage } from '../../src/shared/protocol';
+import type { ChangedFile, CliStatus, ContextChip, HostMessage, RunChanges, RunRecord, WebviewMessage } from '../../src/shared/protocol';
 import { buildPrompt } from '../../src/session/promptBuilder';
 
 type Mode = RunRecord['mode'];
@@ -87,6 +87,21 @@ let tabMode: Mode = 'agent';
 let chips: ContextChip[] = [];
 let tabModel: string | undefined;
 let lastPrompt = '';
+/** Fake Changes-card state per run (Agent replays). */
+const runChanges = new Map<string, RunChanges>();
+const runOrder: { userId: string; runId: string }[] = [];
+
+function postChanges(runId: string) {
+  const c = runChanges.get(runId);
+  if (c) post({ type: 'changes/updated', tabId: TAB, runId, changes: c });
+}
+
+function setFileState(runId: string, paths: string[] | 'all', state: ChangedFile['state']) {
+  const c = runChanges.get(runId);
+  if (!c) return;
+  c.files = c.files.map((f) => (paths === 'all' || paths.includes(f.path) ? { ...f, state } : f));
+  postChanges(runId);
+}
 
 const FAKE_FILES = withFolders([
   'src/math.ts',
@@ -142,6 +157,8 @@ function tabMeta() {
 function reset() {
   cancel?.();
   running = false;
+  runChanges.clear();
+  runOrder.length = 0;
   post({ type: 'state/full', tabs: [{ ...tabMeta(), chips, transcript: [] }], activeTabId: TAB, cli, settings: { defaultMode: 'agent' } });
   post({ type: 'models/list', models: MODELS, source: 'cli' });
 }
@@ -160,10 +177,31 @@ function replay(sc: Scenario, text: string, mode: Mode, attached: ContextChip[] 
     run: { id: runId, role: 'run', mode, status: 'running', events: [], startedAt: Date.now() },
   });
   post({ type: 'tab/updated', tab: tabMeta() });
+  runOrder.push({ userId: `msg_${n}`, runId });
+  if (mode === 'agent') {
+    runChanges.set(runId, { status: 'pending', preSha: 'pre', files: [] });
+    postChanges(runId);
+  }
   let i = 0;
   let stopped = false;
   const finish = (status: 'success' | 'error' | 'stopped') => {
     running = false;
+    if (mode === 'agent') {
+      // Files from the fixture's edit/shell tool calls, plus a file "created by a shell command".
+      const files: ChangedFile[] = [];
+      for (const e of events) {
+        if (e.kind !== 'toolCompleted' || !e.tool.result) continue;
+        const r = e.tool.result as { path?: string; linesAdded?: number; linesRemoved?: number; beforeFullFileContent?: string };
+        if (e.tool.uiKind === 'edit' && r.path) {
+          const path = r.path.replace(/\\/g, '/').split('/').pop()!;
+          files.push({ path: `src/${path}`, status: r.beforeFullFileContent === undefined ? 'A' : 'M', added: r.linesAdded ?? 0, removed: r.linesRemoved ?? 0, binary: false, state: 'pending' });
+        }
+        if (e.tool.uiKind === 'shell') files.push({ path: 'out.txt', status: 'A', added: 1, removed: 0, binary: false, state: 'pending' });
+      }
+      if (sc.name === 'all-cards') files.push({ path: 'old.txt', status: 'D', added: 0, removed: 3, binary: false, state: 'pending' }, { path: 'assets/logo.png', status: 'M', added: 0, removed: 0, binary: true, state: 'pending' });
+      runChanges.set(runId, { status: 'ready', preSha: 'pre', postSha: 'post', files });
+      postChanges(runId);
+    }
     const lines = sc.stderr.split('\n').filter(Boolean);
     post({
       type: 'run/finished',
@@ -231,6 +269,26 @@ function replay(sc: Scenario, text: string, mode: Mode, attached: ContextChip[] 
         break;
       case 'mention/pick':
         addFake({ id: chipId(), kind: 'file', path: msg.path, absPath: `C:/ws/${msg.path}`, isFolder: msg.isFolder });
+        break;
+      case 'changes/revertFile':
+        setFileState(msg.runId, [msg.path], 'reverted');
+        break;
+      case 'changes/keepFile':
+        setFileState(msg.runId, [msg.path], 'kept');
+        break;
+      case 'changes/revertAll':
+        if (confirm('Revert all changes from this run?')) setFileState(msg.runId, 'all', 'reverted');
+        break;
+      case 'changes/keepAll':
+        setFileState(msg.runId, (runChanges.get(msg.runId)?.files ?? []).filter((f) => f.state === 'pending').map((f) => f.path), 'kept');
+        break;
+      case 'checkpoint/restore': {
+        const i = runOrder.findIndex((r) => r.userId === msg.userMessageId);
+        if (i >= 0 && confirm('Restore code to before this message?')) for (const r of runOrder.slice(i)) setFileState(r.runId, 'all', 'reverted');
+        break;
+      }
+      case 'changes/openDiff':
+        post({ type: 'notice', level: 'info', text: `(harness) would open diff for ${msg.path}` });
         break;
       case 'tab/setModel':
         tabModel = msg.model;
