@@ -3,7 +3,7 @@
 CLI version: **2026.11.05-86047df** on Windows 11 x64, recorded 2026-11-05.
 Fixtures: `test/fixtures/<name>.ndjson` (stdout), `.stderr.txt`, `.meta.json` (argv, exit code, timings).
 
-Status legend: ✅ verified on this machine · ⏳ pending (needs `npm run record:agent`, see bottom) · ❌ differs from PLAN.md
+Status legend: ✅ verified on this machine · ⏳ not yet tested · ❌ differs from PLAN.md
 
 ---
 
