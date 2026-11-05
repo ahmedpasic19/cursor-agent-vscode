@@ -35,6 +35,30 @@ export function App() {
     if (tab) setMode(tab.meta.mode);
   }, [tab?.meta.mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Webview-wide shortcuts: Alt+N new tab, Alt+W close, Alt+[ / Alt+] switch tabs.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey || e.ctrlKey || e.metaKey) return;
+      const st = useStore.getState();
+      const order = st.tabOrder;
+      const i = order.indexOf(st.activeTabId ?? '');
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        send({ type: 'tab/new' });
+      } else if ((e.key === 'w' || e.key === 'W') && st.activeTabId) {
+        e.preventDefault();
+        send({ type: 'tab/close', tabId: st.activeTabId });
+      } else if ((e.key === '[' || e.key === ']') && order.length > 1 && i >= 0) {
+        e.preventDefault();
+        const next = order[(i + (e.key === ']' ? 1 : order.length - 1)) % order.length]!;
+        st.activate(next);
+        send({ type: 'tab/activate', tabId: next });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   // Keep the view pinned to the bottom while streaming, unless the user scrolled up.
   useEffect(() => {
     const el = listRef.current;
@@ -47,6 +71,14 @@ export function App() {
   };
 
   const running = !!tab?.meta.running;
+  const lastSent = useMemo(() => {
+    const t = tab?.transcript ?? [];
+    for (let i = t.length - 1; i >= 0; i--) {
+      const it = t[i]!;
+      if (it.role === 'user') return it.text;
+    }
+    return undefined;
+  }, [tab?.transcript]);
   const latestRunId = useMemo(() => {
     const t = tab?.transcript ?? [];
     for (let i = t.length - 1; i >= 0; i--) if (t[i]!.role === 'run') return t[i]!.id;
@@ -71,18 +103,40 @@ export function App() {
       <div className="app">
         <TabBar />
         <CliBanner cli={cli} />
+        {tab?.meta.worktree && !historyOpen && (
+          <div className="worktree-banner">
+            <span title={tab.meta.worktreePath}>
+              ⎇ Worktree{tab.meta.worktreePath ? `: ${tab.meta.worktreePath.split(/[\\/]/).slice(-2).join('/')}` : ' (created on the next run)'}
+            </span>
+            {tab.meta.worktreePath && (
+              <button className="link" onClick={() => send({ type: 'worktree/open', path: tab.meta.worktreePath! })}>
+                Open in new window
+              </button>
+            )}
+          </div>
+        )}
         {historyOpen && <HistoryView />}
         <div className="messages" ref={listRef} onScroll={onScroll} hidden={historyOpen}>
           {!tab || tab.transcript.length === 0 ? (
             <div className="empty">
-              <p>No chats yet.</p>
+              <p>No messages in this chat yet.</p>
               <p className="muted">
                 Select code and press <kbd>Ctrl+L</kbd> to add it, type <kbd>@</kbd> to attach files, or just type below.
               </p>
               <p className="muted">
-                <b>Agent</b> edits files and runs commands, <b>Ask</b> is read-only, <b>Plan</b> proposes a plan you can then
-                run. <kbd>Shift+Tab</kbd> cycles modes.
+                <b>Agent</b> edits files and runs commands (you can review and revert every change), <b>Ask</b> is read-only,{' '}
+                <b>Plan</b> proposes a plan you can then run.
               </p>
+              <table className="shortcuts">
+                <tbody>
+                  <tr><td><kbd>Enter</kbd> / <kbd>Shift+Enter</kbd></td><td>send / new line</td></tr>
+                  <tr><td><kbd>Shift+Tab</kbd></td><td>cycle Agent · Ask · Plan</td></tr>
+                  <tr><td><kbd>Esc</kbd></td><td>stop the run</td></tr>
+                  <tr><td><kbd>↑</kbd> in an empty box</td><td>recall your last message</td></tr>
+                  <tr><td><kbd>Alt+N</kbd> · <kbd>Alt+W</kbd> · <kbd>Alt+[</kbd> <kbd>Alt+]</kbd></td><td>new / close / switch tabs</td></tr>
+                  <tr><td><kbd>Ctrl+I</kbd> · <kbd>Ctrl+L</kbd></td><td>focus chat · add selection</td></tr>
+                </tbody>
+              </table>
             </div>
           ) : (
             tab.transcript.map((item) =>
@@ -118,6 +172,9 @@ export function App() {
           model={tab?.meta.model}
           models={models}
           modesSupported={modesSupported}
+          worktreeSupported={cli.features?.worktree}
+          worktree={tab?.meta.worktree}
+          lastSent={lastSent}
           disabled={!tab || cli.state === 'notFound'}
           focusRequest={focusRequest}
           onModeChange={setMode}

@@ -15,6 +15,8 @@ export interface RunSummary {
   usage?: Usage;
   model?: string;
   isError?: boolean;
+  /** Set when the run used a git worktree (-w). */
+  worktree?: string;
 }
 
 export interface RunView {
@@ -67,6 +69,9 @@ export function applyEvent(view: RunView, ev: AgentEvent): RunView {
       break;
     }
     case 'modeSwitched':
+      break;
+    case 'worktree':
+      view.summary.worktree = ev.path;
       break;
     case 'result':
       view.summary.durationMs = ev.durationMs;

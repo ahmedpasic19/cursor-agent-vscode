@@ -47,7 +47,9 @@ describe('CursorStreamParser on recorded fixtures', () => {
 
       if (fx.meta.exitCode === 0) {
         it('starts with init and ends with result', () => {
-          expect(events[0]?.kind).toBe('init');
+          // -w runs announce the worktree before init.
+          expect(events.find((e) => e.kind !== 'worktree')?.kind).toBe('init');
+          if (fx.meta.args.includes('-w')) expect(events[0]).toMatchObject({ kind: 'worktree' });
           expect(events.at(-1)?.kind).toBe('result');
         });
 

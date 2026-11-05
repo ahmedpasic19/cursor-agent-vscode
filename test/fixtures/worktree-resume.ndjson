@@ -1,0 +1,10 @@
+Using worktree: C:\Users\Korisnik\.cursor\worktrees\wt-probe-nxpx\probe1
+{"type":"system","subtype":"init","apiKeySource":"login","cwd":"C:\\Users\\Korisnik\\.cursor\\worktrees\\wt-probe-nxpx\\probe1","session_id":"dcf03ae8-f22f-430c-ab61-70ab29bbf595","model":"Composer 2.5 Fast","permissionMode":"default"}
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"What was my previous question? One sentence."}]},"session_id":"dcf03ae8-f22f-430c-ab61-70ab29bbf595"}
+{"type":"thinking","subtype":"delta","text":"The","session_id":"dcf03ae8-f22f-430c-ab61-70ab29bbf595","timestamp_ms":1793871539360}
+{"type":"thinking","subtype":"delta","text":" user's previous question","session_id":"dcf03ae8-f22f-430c-ab61-70ab29bbf595","timestamp_ms":1793871539382}
+{"type":"thinking","subtype":"delta","text":" was in the first message","session_id":"dcf03ae8-f22f-430c-ab61-70ab29bbf595","timestamp_ms":1793871539444}
+{"type":"thinking","subtype":"delta","text":".","session_id":"dcf03ae8-f22f-430c-ab61-70ab29bbf595","timestamp_ms":1793871539490}
+{"type":"thinking","subtype":"completed","session_id":"dcf03ae8-f22f-430c-ab61-70ab29bbf595","timestamp_ms":1793871539492}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Your previous question asked, in one short sentence, what is in `a.txt`, and what your current working directory is."}]},"session_id":"dcf03ae8-f22f-430c-ab61-70ab29bbf595"}
+{"type":"result","subtype":"success","duration_ms":2332,"duration_api_ms":2332,"is_error":false,"result":"Your previous question asked, in one short sentence, what is in `a.txt`, and what your current working directory is.","session_id":"dcf03ae8-f22f-430c-ab61-70ab29bbf595","request_id":"0a7a2567-0e32-48f6-86e8-55ffcc290155","usage":{"inputTokens":10099,"outputTokens":71,"cacheReadTokens":4000,"cacheWriteTokens":0}}

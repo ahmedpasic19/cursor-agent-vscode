@@ -49,6 +49,7 @@ export function RunMessage({ run, view, isLatest }: Props) {
   const lastIsText = blocks[blocks.length - 1]?.type === 'text';
   const s = view.summary;
   const footer = [
+    s.worktree ? `⎇ ${s.worktree.split(/[\\/]/).pop()}` : undefined,
     s.model,
     formatDuration(s.durationMs),
     s.usage

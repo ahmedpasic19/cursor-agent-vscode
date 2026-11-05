@@ -28,6 +28,8 @@ export class CursorStreamParser {
     try {
       raw = JSON.parse(trimmed);
     } catch {
+      const wt = /^Using worktree:\s*(.+)$/.exec(trimmed);
+      if (wt) return [{ kind: 'worktree', path: wt[1]!.trim() }];
       return [{ kind: 'unknown', raw: trimmed }];
     }
     return this.parse(raw);

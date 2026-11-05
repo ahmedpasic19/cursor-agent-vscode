@@ -17,6 +17,7 @@ export function buildArgs(opts: RunOptions, caps?: CliCapabilities): string[] {
   args.push('--workspace', opts.cwd);
   if (opts.model) args.push('--model', opts.model);
   if (opts.resumeSessionId) args.push('--resume', opts.resumeSessionId);
+  if (opts.worktreeName && has('--worktree')) args.push('--worktree', opts.worktreeName);
   if (opts.mode === 'agent') args.push('--force');
   else if (has('--mode')) args.push('--mode', opts.mode);
   args.push(...opts.extraArgs);

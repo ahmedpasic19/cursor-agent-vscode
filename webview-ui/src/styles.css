@@ -1066,3 +1066,125 @@ kbd {
 .history-delete:focus-visible {
   opacity: 1;
 }
+
+/* ---------- Phase 6: code blocks, highlighting, worktree, shortcuts ---------- */
+.code-block {
+  margin: 6px 0;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--vscode-textCodeBlock-background);
+}
+.code-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 4px 1px 8px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+.code-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--vscode-editor-font-family);
+}
+.code-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0.6;
+}
+.code-block:hover .code-actions,
+.code-actions:focus-within {
+  opacity: 1;
+}
+.code-btn {
+  background: none;
+  border: none;
+  padding: 1px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--vscode-foreground);
+}
+.code-btn:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+.code-block pre,
+.markdown .code-block pre {
+  margin: 0;
+  border-radius: 0;
+  background: transparent !important;
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size, 12px);
+  line-height: 1.45;
+}
+/* Shiki dual themes: pick the variable set matching VS Code's theme kind. */
+.shiki span {
+  color: var(--shiki-dark);
+  font-style: var(--shiki-dark-font-style);
+  font-weight: var(--shiki-dark-font-weight);
+}
+body.vscode-light .shiki span,
+body.vscode-high-contrast-light .shiki span {
+  color: var(--shiki-light);
+  font-style: var(--shiki-light-font-style);
+  font-weight: var(--shiki-light-font-weight);
+}
+body.vscode-high-contrast:not(.vscode-high-contrast-light) .shiki span {
+  color: var(--shiki-dark);
+}
+
+.worktree-toggle {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  user-select: none;
+}
+.worktree-toggle.on {
+  color: var(--vscode-foreground);
+}
+.worktree-toggle input {
+  margin: 0;
+}
+.worktree-banner {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 10px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+.worktree-banner span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shortcuts {
+  margin: 12px auto 0;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  border-collapse: collapse;
+  text-align: left;
+}
+.shortcuts td {
+  padding: 2px 6px;
+}
+.shortcuts td:first-child {
+  text-align: right;
+  white-space: nowrap;
+}
+button:focus-visible,
+[role='tab']:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}

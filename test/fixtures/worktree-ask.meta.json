@@ -1,0 +1,40 @@
+{
+  "name": "worktree-ask",
+  "command": "C:\\Users\\Korisnik\\AppData\\Local\\cursor-agent\\versions\\2026.11.05-86047df\\node.exe",
+  "args": [
+    "C:\\Users\\Korisnik\\AppData\\Local\\cursor-agent\\versions\\2026.11.05-86047df\\index.js",
+    "-p",
+    "--trust",
+    "--output-format",
+    "stream-json",
+    "--workspace",
+    "C:\\Users\\Korisnik\\AppData\\Local\\Temp/wt-probe-nXPX",
+    "--model",
+    "composer-2.5-fast",
+    "--mode",
+    "ask",
+    "-w",
+    "probe1"
+  ],
+  "cwd": "C:\\Users\\Korisnik\\AppData\\Local\\Temp\\wt-probe-nXPX",
+  "prompt": "In one short sentence: what is in a.txt? Also state your current working directory.",
+  "exitCode": 0,
+  "signal": null,
+  "firstEventMs": 3844,
+  "resultMs": 28440,
+  "exitMs": 29550,
+  "exitedAfterResultMs": 1110,
+  "killedAfterResult": false,
+  "eventTypes": {
+    "<non-json>": 1,
+    "system:init": 1,
+    "user": 1,
+    "thinking:delta": 25,
+    "thinking:completed": 3,
+    "assistant": 2,
+    "tool_call:started": 3,
+    "tool_call:completed": 3,
+    "result:success": 1
+  },
+  "recordedAt": "2026-11-05T09:38:20.042Z"
+}

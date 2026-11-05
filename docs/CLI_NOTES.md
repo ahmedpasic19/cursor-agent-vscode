@@ -140,8 +140,16 @@ instead of relying on assistant text.
 
 ## 9. Worktrees ⏳
 
-`-w [name]` and `--worktree-base` exist. Not exercised (needs a git repo and creates dirs under
-`~/.cursor/worktrees`). Keep the per-tab worktree toggle behind a "verified" flag until tested in Phase 6.
+Verified in Phase 6 on Windows (fixtures `worktree-ask`, `worktree-resume`):
+- `-w <name>` creates `~/.cursor/worktrees/<repo-folder-lowercased>/<name>` on a new branch `<name>`, and the agent works there.
+- **The first stdout line is plain text, not JSON:** `Using worktree: C:\Users\…\.cursor\worktrees\<repo>\<name>`.
+  The parser turns it into a `{kind:'worktree', path}` event. `system:init.cwd` is the worktree path too.
+- `--resume <id> -w <same name>` reuses the same worktree and session.
+- The extension uses one stable name per tab (`cursor-agent-<tab id>`). Agent runs in a worktree take no checkpoint,
+  because the user's tree isn't touched.
+- Cleanup isn't automatic. `git worktree remove --force <path>` plus `git branch -D <name>` removes it. In the probe, Windows
+  kept the empty worktree folder locked for a while after removal; it disappears once the handle is released.
+- It needs a git repository; in a non-git folder the CLI fails and the error banner shows its stderr.
 
 ## 10. Plan changes made because of these findings
 

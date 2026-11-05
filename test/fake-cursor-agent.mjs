@@ -30,7 +30,7 @@ if (args[0] === 'status') {
   process.exit(0);
 }
 if (args.includes('--help')) {
-  console.log('Options:\n  -p, --print\n  --output-format <format>\n  --stream-partial-output\n  --mode <mode>\n  --resume [chatId]\n  --model <model>\n  -f, --force\n  --trust\n  --workspace <path>');
+  console.log('Options:\n  -p, --print\n  --output-format <format>\n  --stream-partial-output\n  --mode <mode>\n  --resume [chatId]\n  --model <model>\n  -f, --force\n  --trust\n  --workspace <path>\n  -w, --worktree [name]');
   process.exit(0);
 }
 

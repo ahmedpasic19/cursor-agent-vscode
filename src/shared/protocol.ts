@@ -107,6 +107,10 @@ export const TabSnapshotSchema = z.object({
   model: z.string().optional(),
   cwd: z.string().optional(),
   running: z.boolean(),
+  /** Runs use `-w <name>` (an isolated git worktree under ~/.cursor/worktrees). */
+  worktree: z.boolean().optional(),
+  /** Worktree path reported by the CLI, once known. */
+  worktreePath: z.string().optional(),
   /** Chips waiting in the composer for the next message. */
   chips: z.array(ContextChipSchema),
   transcript: z.array(TranscriptItemSchema),
@@ -234,5 +238,11 @@ export const WebviewMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('cli/refresh') }),
   z.object({ type: z.literal('settings/open'), query: z.string().optional() }),
   z.object({ type: z.literal('log/show') }),
+  z.object({ type: z.literal('code/copy'), code: z.string() }),
+  z.object({ type: z.literal('code/insert'), code: z.string() }),
+  z.object({ type: z.literal('code/apply'), tabId: z.string(), path: z.string().min(1), code: z.string() }),
+  /** Per-tab "run in a git worktree" toggle (CLI -w). */
+  z.object({ type: z.literal('tab/setWorktree'), tabId: z.string(), enabled: z.boolean() }),
+  z.object({ type: z.literal('worktree/open'), path: z.string() }),
 ]);
 export type WebviewMessage = z.infer<typeof WebviewMessageSchema>;

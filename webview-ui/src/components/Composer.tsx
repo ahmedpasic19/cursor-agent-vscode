@@ -15,6 +15,11 @@ interface Props {
   model?: string;
   models: ModelOption[];
   modesSupported: boolean;
+  /** CLI supports -w; undefined hides the toggle. */
+  worktreeSupported?: boolean;
+  worktree?: boolean;
+  /** Last message sent in this tab, for ArrowUp recall. */
+  lastSent?: string;
   disabled?: boolean;
   focusRequest: number;
   onModeChange(mode: Mode): void;
@@ -219,6 +224,10 @@ export function Composer(props: Props) {
     } else if (e.key === 'Tab' && e.shiftKey) {
       e.preventDefault();
       props.onModeChange(nextMode(mode, modesSupported));
+    } else if (e.key === 'ArrowUp' && !text && props.lastSent) {
+      // Recall the last message into an empty composer (like a shell).
+      e.preventDefault();
+      setText(props.lastSent);
     } else if (e.key === 'Backspace' && !text && chips.length && tabId) {
       // Backspace in an empty composer removes the last chip.
       e.preventDefault();
@@ -300,6 +309,20 @@ export function Composer(props: Props) {
           onChange={props.onModelChange}
           onRefresh={() => send({ type: 'models/refresh' })}
         />
+        {props.worktreeSupported && tabId && (
+          <label
+            className={`worktree-toggle${props.worktree ? ' on' : ''}`}
+            title="Run this tab in its own git worktree (cursor-agent -w). Your working tree stays untouched; good for parallel tabs. Needs a git repo."
+          >
+            <input
+              type="checkbox"
+              checked={!!props.worktree}
+              disabled={running}
+              onChange={(e) => send({ type: 'tab/setWorktree', tabId, enabled: e.target.checked })}
+            />
+            Worktree
+          </label>
+        )}
         <span className="spacer" />
         {running ? (
           <button className="btn stop" onClick={props.onStop} title="Stop (Esc)">

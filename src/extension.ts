@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { CliService } from './backend/CliService';
 import { BeforeContentProvider } from './checkpoints/BeforeContentProvider';
+import { CodeActions } from './codeActions';
 import { ChangesController } from './checkpoints/ChangesController';
 import { workspaceHash } from './checkpoints/CheckpointService';
 import { DiffProvider } from './checkpoints/DiffProvider';
@@ -23,6 +24,7 @@ export interface CursorAgentApi {
   manager: SessionManager;
   changes: ChangesController;
   history: HistoryStore;
+  code: CodeActions;
   cliReady(): Promise<unknown>;
 }
 
@@ -75,6 +77,7 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
       extraArgs: cfg().get<string[]>('extraArgs', []),
       postResultGraceMs: cfg().get<number>('postResultGraceMs', 3000),
       timeoutMs: cfg().get<number>('runTimeoutMinutes', 30) * 60_000,
+      worktreeSupported: cli.status.features?.worktree ?? false,
     }),
     getMaxConcurrent: () => cfg().get<number>('maxConcurrentRuns', 3),
     getDefaultMode: () => cfg().get<Mode>('defaultMode', 'agent'),
@@ -112,6 +115,7 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
   const changes: ChangesController = new ChangesController(context.globalStorageUri, mgr, cfg, log, (tab, run) => {
     if (run.changes) post({ type: 'changes/updated', tabId: tab.id, runId: run.id, changes: run.changes });
   });
+  const code = new CodeActions(before, (level, text) => bridge.post({ type: 'notice', level, text }));
   const reportError = (what: string) => (e: unknown) => {
     log(`[changes] ${what} failed: ${e instanceof Error ? e.stack : String(e)}`);
     void vscode.window.showErrorMessage(`Cursor Agent: ${what} failed — ${e instanceof Error ? e.message : String(e)}`);
@@ -289,6 +293,21 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
       case 'log/show':
         output.show(true);
         break;
+      case 'code/copy':
+        code.copy(msg.code).then(() => bridge.post({ type: 'notice', level: 'info', text: 'Copied to clipboard.' }), reportError('Copy'));
+        break;
+      case 'code/insert':
+        code.insert(msg.code).catch(reportError('Insert'));
+        break;
+      case 'code/apply':
+        code.apply(mgr.getTab(msg.tabId)?.cwd ?? getCwd(), msg.path, msg.code).catch(reportError('Apply'));
+        break;
+      case 'tab/setWorktree':
+        mgr.getTab(msg.tabId)?.setWorktree(msg.enabled);
+        break;
+      case 'worktree/open':
+        void vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(msg.path), { forceNewWindow: true });
+        break;
     }
   }
 
@@ -327,6 +346,7 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
       if (e.affectsConfiguration('cursorAgent.cliPath')) void cli.refresh();
     }),
     fileIndex,
+    code,
     { dispose: () => mgr.stopAll() },
   );
 
@@ -341,7 +361,7 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
 
   log('Cursor Agent activated');
   const ready = cli.refresh();
-  return { manager: mgr, changes, history: store, cliReady: () => ready };
+  return { manager: mgr, changes, history: store, code, cliReady: () => ready };
 }
 
 export function deactivate(): void {

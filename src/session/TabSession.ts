@@ -17,6 +17,8 @@ export interface RunSettings {
   extraArgs: string[];
   postResultGraceMs: number;
   timeoutMs: number;
+  /** CLI supports -w (from --help). */
+  worktreeSupported?: boolean;
 }
 
 export interface TabEvents {
@@ -62,6 +64,8 @@ export interface PersistedTab {
   transcript: TranscriptItem[];
   createdAt: number;
   updatedAt: number;
+  worktree?: boolean;
+  worktreePath?: string;
 }
 
 /** Case-insensitive on Windows, forward slashes, relative to the tab root. */
@@ -90,6 +94,9 @@ export class TabSession {
   readonly transcript: TranscriptItem[] = [];
   /** Context chips waiting for the next message. */
   chips: ContextChip[] = [];
+  /** Runs use an isolated git worktree (`-w cursor-agent-<tab>`), reused across runs. */
+  worktree = false;
+  worktreePath?: string;
   private active?: { run: RunRecord; handle?: RunHandle };
 
   constructor(
@@ -110,6 +117,8 @@ export class TabSession {
       this.chips = restore.chips ?? [];
       this.createdAt = restore.createdAt;
       this.updatedAt = restore.updatedAt;
+      this.worktree = !!restore.worktree;
+      this.worktreePath = restore.worktreePath;
       for (const item of restore.transcript) {
         // Runs that were active when VS Code closed can't be continued as-is.
         if (item.role === 'run' && (item.status === 'running' || item.status === 'queued')) {
@@ -138,7 +147,20 @@ export class TabSession {
       transcript: this.transcript,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
+      worktree: this.worktree,
+      worktreePath: this.worktreePath,
     };
+  }
+
+  /** Stable worktree name for this tab (the CLI reuses an existing worktree with the same name). */
+  get worktreeName(): string {
+    return `cursor-agent-${this.id.replace(/^tab_/, '')}`;
+  }
+
+  setWorktree(enabled: boolean): void {
+    if (this.active || this.worktree === enabled) return;
+    this.worktree = enabled;
+    this.events.onTabUpdated(this);
   }
 
   rename(title: string): void {
@@ -160,6 +182,8 @@ export class TabSession {
       model: this.model,
       cwd: this.cwd,
       running: this.running,
+      worktree: this.worktree || undefined,
+      worktreePath: this.worktreePath,
       chips: this.chips,
       transcript: this.transcript,
     };
@@ -268,7 +292,15 @@ export class TabSession {
     // Checkpoint before Agent runs (PLAN.md 5.6).
     let ckpt: CheckpointService | undefined;
     let preSha: string | undefined;
-    if (run.mode === 'agent' && checkpoints) {
+    const useWorktree = this.worktree && settings.worktreeSupported !== false;
+    if (run.mode === 'agent' && useWorktree) {
+      run.changes = {
+        status: 'unavailable',
+        files: [],
+        message: 'This run works in its own git worktree, so your working tree is untouched. Review and merge its branch when you are happy with it.',
+      };
+      this.events.onRunChanges(this, run);
+    } else if (run.mode === 'agent' && checkpoints) {
       if ('unavailable' in checkpoints) {
         run.changes = { status: 'unavailable', files: [], message: checkpoints.unavailable };
       } else {
@@ -312,11 +344,16 @@ export class TabSession {
         model: run.model,
         resumeSessionId: this.sessionId,
         ...settings,
+        worktreeName: useWorktree ? this.worktreeName : undefined,
       },
       (ev) => {
         run.events.push(ev);
         if (ev.kind === 'init' && !this.sessionId) {
           this.sessionId = ev.sessionId;
+        }
+        if (ev.kind === 'worktree' && ev.path !== this.worktreePath) {
+          this.worktreePath = ev.path;
+          this.events.onTabUpdated(this);
         }
         if (ev.kind === 'modeSwitched' && (ev.to === 'agent' || ev.to === 'ask' || ev.to === 'plan')) {
           this.sessionMode = ev.to;

@@ -1718,3 +1718,332 @@ exports[`CursorStreamParser on recorded fixtures > switch-plan > matches snapsho
   },
 ]
 `;
+
+exports[`CursorStreamParser on recorded fixtures > worktree-ask > matches snapshot 1`] = `
+[
+  {
+    "kind": "worktree",
+    "path": "C:\\Users\\Korisnik\\.cursor\\worktrees\\wt-probe-nxpx\\probe1",
+  },
+  {
+    "kind": "init",
+    "model": "Composer 2.5 Fast",
+  },
+  {
+    "at": 1793871491900,
+    "kind": "thinking",
+    "text": "I",
+  },
+  {
+    "at": 1793871491970,
+    "kind": "thinking",
+    "text": " need to check the contents",
+  },
+  {
+    "at": 1793871492013,
+    "kind": "thinking",
+    "text": " of a.txt and identify",
+  },
+  {
+    "at": 1793871492024,
+    "kind": "thinking",
+    "text": " my current working ",
+  },
+  {
+    "at": 1793871492025,
+    "kind": "thinking",
+    "text": "directory",
+  },
+  {
+    "at": 1793871492044,
+    "kind": "thinking",
+    "text": ".",
+  },
+  {
+    "at": 1793871492344,
+    "kind": "thinkingDone",
+  },
+  {
+    "kind": "text",
+    "text": "Locating and reading \`a.txt\`.
+",
+  },
+  {
+    "argKeys": [
+      "globPattern",
+      "targetDirectory",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "glob",
+    "resultKeys": undefined,
+    "uiKind": "search",
+  },
+  {
+    "argKeys": [
+      "globPattern",
+      "targetDirectory",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "glob",
+    "resultKeys": [
+      "clientTruncated",
+      "files",
+      "path",
+      "pattern",
+      "ripgrepTruncated",
+      "totalFiles",
+    ],
+    "uiKind": "search",
+  },
+  {
+    "at": 1793871493736,
+    "kind": "thinking",
+    "text": "Found",
+  },
+  {
+    "at": 1793871493779,
+    "kind": "thinking",
+    "text": " a.txt at the root. ",
+  },
+  {
+    "at": 1793871493780,
+    "kind": "thinking",
+    "text": "Reading",
+  },
+  {
+    "at": 1793871493822,
+    "kind": "thinking",
+    "text": " it now.",
+  },
+  {
+    "at": 1793871493823,
+    "kind": "thinkingDone",
+  },
+  {
+    "argKeys": [
+      "path",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "read",
+    "resultKeys": undefined,
+    "uiKind": "read",
+  },
+  {
+    "argKeys": [
+      "path",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "read",
+    "resultKeys": [
+      "content",
+      "exceededLimit",
+      "fileSize",
+      "isEmpty",
+      "path",
+      "readRange",
+      "relatedCursorRulePaths",
+      "relatedCursorRules",
+      "totalLines",
+    ],
+    "uiKind": "read",
+  },
+  {
+    "at": 1793871494862,
+    "kind": "thinking",
+    "text": "a",
+  },
+  {
+    "at": 1793871494862,
+    "kind": "thinking",
+    "text": ".txt contains "hello",
+  },
+  {
+    "at": 1793871494940,
+    "kind": "thinking",
+    "text": "". I cannot determine",
+  },
+  {
+    "at": 1793871495008,
+    "kind": "thinking",
+    "text": " the working directory",
+  },
+  {
+    "at": 1793871495193,
+    "kind": "thinking",
+    "text": " because shell commands",
+  },
+  {
+    "at": 1793871495194,
+    "kind": "thinking",
+    "text": " are unavailable in ",
+  },
+  {
+    "at": 1793871495195,
+    "kind": "thinking",
+    "text": "Ask",
+  },
+  {
+    "at": 1793871495196,
+    "kind": "thinking",
+    "text": " mode.",
+  },
+  {
+    "at": 1793871495535,
+    "kind": "thinking",
+    "text": "
+
+The",
+  },
+  {
+    "at": 1793871495607,
+    "kind": "thinking",
+    "text": " workspace path is C",
+  },
+  {
+    "at": 1793871495641,
+    "kind": "thinking",
+    "text": ":/Users/Korisnik/.cursor",
+  },
+  {
+    "at": 1793871495744,
+    "kind": "thinking",
+    "text": "/worktrees/wt-probe-n",
+  },
+  {
+    "at": 1793871495899,
+    "kind": "thinking",
+    "text": "xpx/probe1. The terminal",
+  },
+  {
+    "at": 1793871495899,
+    "kind": "thinking",
+    "text": " working directory may",
+  },
+  {
+    "at": 1793871495923,
+    "kind": "thinking",
+    "text": " differ.",
+  },
+  {
+    "at": 1793871495923,
+    "kind": "thinkingDone",
+  },
+  {
+    "argKeys": [
+      "adminCommandDenylist",
+      "closeStdin",
+      "command",
+      "conversationId",
+      "description",
+      "fileOutputThresholdBytes",
+      "hardTimeout",
+      "hasInputRedirect",
+      "hasOutputRedirect",
+      "isBackground",
+      "parsingResult",
+      "requestId",
+      "simpleCommands",
+      "skipApproval",
+      "smartModeClassifierAllowed",
+      "timeout",
+      "timeoutBehavior",
+      "toolCallId",
+      "workingDirectory",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "shell",
+    "resultKeys": undefined,
+    "uiKind": "shell",
+  },
+  {
+    "argKeys": [
+      "adminCommandDenylist",
+      "closeStdin",
+      "command",
+      "conversationId",
+      "description",
+      "fileOutputThresholdBytes",
+      "hardTimeout",
+      "hasInputRedirect",
+      "hasOutputRedirect",
+      "isBackground",
+      "parsingResult",
+      "requestId",
+      "simpleCommands",
+      "skipApproval",
+      "smartModeClassifierAllowed",
+      "timeout",
+      "timeoutBehavior",
+      "toolCallId",
+      "workingDirectory",
+    ],
+    "error": "Tool failed (rejected)",
+    "kind": "toolCompleted",
+    "name": "shell",
+    "resultKeys": undefined,
+    "uiKind": "shell",
+  },
+  {
+    "kind": "text",
+    "text": "**\`a.txt\`** holds the single line \`hello\`.
+
+**Current working directory** (from this session’s workspace; shell \`pwd\` isn’t available in Ask mode): \`C:\\Users\\Korisnik\\.cursor\\worktrees\\wt-probe-nxpx\\probe1\`.",
+  },
+  {
+    "hasUsage": true,
+    "isError": false,
+    "kind": "result",
+  },
+]
+`;
+
+exports[`CursorStreamParser on recorded fixtures > worktree-resume > matches snapshot 1`] = `
+[
+  {
+    "kind": "worktree",
+    "path": "C:\\Users\\Korisnik\\.cursor\\worktrees\\wt-probe-nxpx\\probe1",
+  },
+  {
+    "kind": "init",
+    "model": "Composer 2.5 Fast",
+  },
+  {
+    "at": 1793871539360,
+    "kind": "thinking",
+    "text": "The",
+  },
+  {
+    "at": 1793871539382,
+    "kind": "thinking",
+    "text": " user's previous question",
+  },
+  {
+    "at": 1793871539444,
+    "kind": "thinking",
+    "text": " was in the first message",
+  },
+  {
+    "at": 1793871539490,
+    "kind": "thinking",
+    "text": ".",
+  },
+  {
+    "at": 1793871539492,
+    "kind": "thinkingDone",
+  },
+  {
+    "kind": "text",
+    "text": "Your previous question asked, in one short sentence, what is in \`a.txt\`, and what your current working directory is.",
+  },
+  {
+    "hasUsage": true,
+    "isError": false,
+    "kind": "result",
+  },
+]
+`;

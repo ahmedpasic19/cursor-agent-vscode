@@ -11,6 +11,8 @@ export interface RunOptions {
   extraArgs: string[];
   postResultGraceMs: number;
   timeoutMs: number;
+  /** Run in a named git worktree (`-w <name>`); the same name reuses the same worktree. */
+  worktreeName?: string;
 }
 
 export interface RunHandle {

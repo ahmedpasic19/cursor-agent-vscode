@@ -129,8 +129,11 @@ export function TabBar() {
       >
         ⏱
       </button>
-      <button className="icon-btn" title="New chat" aria-label="New chat" onClick={() => send({ type: 'tab/new' })}>
+      <button className="icon-btn" title="New chat (Alt+N)" aria-label="New chat" onClick={() => send({ type: 'tab/new' })}>
         +
+      </button>
+      <button className="icon-btn" title="Settings" aria-label="Settings" onClick={() => send({ type: 'settings/open', query: 'cursorAgent' })}>
+        ⚙
       </button>
     </div>
   );

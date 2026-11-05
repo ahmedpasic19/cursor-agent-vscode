@@ -45,6 +45,8 @@ export type AgentEvent =
   | { kind: 'toolStarted'; tool: ToolCallInfo }
   | { kind: 'toolCompleted'; tool: ToolCallInfo }
   | { kind: 'modeSwitched'; from?: string; to: string }
+  /** `-w` runs print "Using worktree: <path>" as plain text before the JSON stream. */
+  | { kind: 'worktree'; path: string }
   | {
       kind: 'result';
       sessionId?: string;
