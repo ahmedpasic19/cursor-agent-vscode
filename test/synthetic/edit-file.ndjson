@@ -1,0 +1,6 @@
+{"type":"system","subtype":"init","apiKeySource":"login","cwd":"__CWD__","session_id":"edit-__FILE__","model":"Synthetic","permissionMode":"default"}
+{"type":"tool_call","subtype":"started","call_id":"e1","tool_call":{"editToolCall":{"args":{"path":"__CWD__/__FILE__","streamContent":"x"}}},"session_id":"edit-__FILE__","timestamp_ms":1}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Editing __FILE__ "}]},"session_id":"edit-__FILE__","timestamp_ms":2}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"slowly."}]},"session_id":"edit-__FILE__","timestamp_ms":3}
+{"type":"tool_call","subtype":"completed","call_id":"e1","tool_call":{"editToolCall":{"args":{"path":"__CWD__/__FILE__","streamContent":"x"},"result":{"success":{"path":"__CWD__/__FILE__","linesAdded":1,"linesRemoved":1,"diffString":"","message":"ok"}}}},"session_id":"edit-__FILE__","timestamp_ms":4}
+{"type":"result","subtype":"success","duration_ms":10,"is_error":false,"result":"Editing __FILE__ slowly.","session_id":"edit-__FILE__"}

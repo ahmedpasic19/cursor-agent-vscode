@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { CliService } from './backend/CliService';
 import { BeforeContentProvider } from './checkpoints/BeforeContentProvider';
 import { ChangesController } from './checkpoints/ChangesController';
+import { workspaceHash } from './checkpoints/CheckpointService';
 import { DiffProvider } from './checkpoints/DiffProvider';
 import { registerAddToChat } from './context/commands';
 import { fileChip } from './context/ContextCollector';
@@ -10,14 +11,18 @@ import type { Mode } from './shared/events';
 import type { HostMessage, WebviewMessage } from './shared/protocol';
 import { SessionManager } from './session/SessionManager';
 import { StatusBar } from './statusBar';
+import { HistoryStore } from './storage/HistoryStore';
 import { WebviewBridge } from './webview/WebviewBridge';
 
 let manager: SessionManager | undefined;
+let history: HistoryStore | undefined;
+let saveOpenStateNow: (() => void) | undefined;
 
 /** Returned from activate(); used by integration tests. */
 export interface CursorAgentApi {
   manager: SessionManager;
   changes: ChangesController;
+  history: HistoryStore;
   cliReady(): Promise<unknown>;
 }
 
@@ -31,6 +36,17 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
   const before = new BeforeContentProvider();
   const fileIndex = new FileIndex(log);
   const maxChipLines = () => cfg().get<number>('context.maxChipLines', 2000);
+
+  // History lives per workspace (the .code-workspace file, else the first folder).
+  const workspaceKey =
+    vscode.workspace.workspaceFile?.scheme === 'file'
+      ? vscode.workspace.workspaceFile.fsPath
+      : (vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? 'no-workspace');
+  const store = new HistoryStore(vscode.Uri.joinPath(context.globalStorageUri, workspaceHash(workspaceKey)).fsPath, {
+    limit: () => cfg().get<number>('historyLimit', 200),
+    log,
+  });
+  history = store;
 
   const cli = new CliService(
     () => cfg().get<string>('cliPath', ''),
@@ -66,8 +82,32 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     getCwd,
     post,
     getCheckpoints: (root) => changes.sourceFor(root),
+    onTabChanged: (tab, urgent) => store.schedule(tab, urgent),
+    onTabsChanged: () => saveOpenState(),
   });
   manager = mgr;
+
+  const saveOpenState = () => store.saveOpenState({ openTabs: mgr.tabs.map((t) => t.id), activeTabId: mgr.activeTabId });
+  saveOpenStateNow = saveOpenState;
+
+  // Restore the tabs that were open last time (PLAN.md §5.7).
+  {
+    const state = store.loadOpenState();
+    for (const id of state.openTabs) {
+      const data = store.load(id);
+      if (data) mgr.restoreTab(data);
+    }
+    if (mgr.tabs.length) {
+      mgr.activeTabId = mgr.getTab(state.activeTabId ?? '')?.id ?? mgr.tabs[0]!.id;
+      log(`[history] restored ${mgr.tabs.length} tab(s)`);
+    }
+    store.prune(new Set(mgr.tabs.map((t) => t.id)));
+  }
+
+  const sendHistory = () => {
+    const open = new Set(mgr.tabs.map((t) => t.id));
+    bridge.post({ type: 'history/list', items: store.list(open) });
+  };
 
   const changes: ChangesController = new ChangesController(context.globalStorageUri, mgr, cfg, log, (tab, run) => {
     if (run.changes) post({ type: 'changes/updated', tabId: tab.id, runId: run.id, changes: run.changes });
@@ -122,8 +162,47 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
         sendFullState();
         break;
       case 'tab/new':
-        mgr.replaceWithNewTab();
-        sendFullState();
+        mgr.newTab(true);
+        break;
+      case 'tab/close':
+        mgr.closeTab(msg.tabId);
+        break;
+      case 'tab/activate':
+        mgr.activate(msg.tabId);
+        break;
+      case 'tab/rename':
+        mgr.renameTab(msg.tabId, msg.title);
+        break;
+      case 'run/resume':
+        mgr.resume(msg.tabId);
+        break;
+      case 'history/request':
+        sendHistory();
+        break;
+      case 'history/open': {
+        if (mgr.getTab(msg.id)) {
+          mgr.activate(msg.id, true);
+          break;
+        }
+        const data = store.load(msg.id);
+        if (!data) {
+          bridge.post({ type: 'notice', level: 'error', text: 'That chat could not be loaded.' });
+          break;
+        }
+        mgr.restoreTab(data, true);
+        mgr.activate(msg.id, true);
+        break;
+      }
+      case 'history/delete':
+        void (async () => {
+          const ok =
+            (await vscode.window.showWarningMessage('Delete this chat from history?', { modal: true, detail: 'This cannot be undone.' }, 'Delete')) ===
+            'Delete';
+          if (!ok) return;
+          if (mgr.getTab(msg.id)) mgr.closeTab(msg.id);
+          store.delete(msg.id);
+          sendHistory();
+        })();
         break;
       case 'message/send':
         mgr.send(msg.tabId, msg.text, msg.mode, msg.model, msg.chipIds);
@@ -221,10 +300,13 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
       webviewOptions: { retainContextWhenHidden: true },
     }),
     vscode.commands.registerCommand('cursorAgent.newChat', async () => {
-      mgr.replaceWithNewTab();
       await bridge.reveal();
-      sendFullState();
+      mgr.newTab(true);
       bridge.post({ type: 'composer/focus' });
+    }),
+    vscode.commands.registerCommand('cursorAgent.showHistory', async () => {
+      await bridge.reveal();
+      bridge.post({ type: 'history/show' });
     }),
     vscode.commands.registerCommand('cursorAgent.focusChat', async () => {
       await bridge.reveal();
@@ -259,10 +341,13 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
 
   log('Cursor Agent activated');
   const ready = cli.refresh();
-  return { manager: mgr, changes, cliReady: () => ready };
+  return { manager: mgr, changes, history: store, cliReady: () => ready };
 }
 
 export function deactivate(): void {
+  // Save first, so runs still in progress are recorded as running → "Interrupted" on restore.
+  saveOpenStateNow?.();
+  history?.flushSync();
   manager?.stopAll();
 }
 

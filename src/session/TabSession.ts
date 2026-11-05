@@ -3,6 +3,7 @@ import type { CheckpointService } from '../checkpoints/CheckpointService';
 import type { AgentEvent, Mode, RunOutcome } from '../shared/events';
 import { addChip, type AddResult } from '../context/chips';
 import type { ContextChip, RunRecord, TabSnapshot, TranscriptItem, UserMessage } from '../shared/protocol';
+import { compactEvents } from '../shared/transcript';
 import { buildPrompt, titleFrom } from './promptBuilder';
 
 /** Placeholder while a run is starting (taking its checkpoint). */
@@ -27,16 +28,60 @@ export interface TabEvents {
   /** The tab was cleared (/clear): the webview must replace its copy. */
   onTabReset(tab: TabSession): void;
   onRunChanges(tab: TabSession, run: RunRecord): void;
+  onRunWarnings(tab: TabSession, run: RunRecord): void;
 }
 
 /** A checkpoint service for this tab's root, or a reason why checkpoints are off. */
 export type CheckpointSource = CheckpointService | { unavailable: string } | undefined;
 
+/** Coordinates Agent runs across tabs (SessionManager implements it). */
+export interface OverlapTracker {
+  agentRunStarted(tab: TabSession, run: RunRecord): void;
+  agentRunEnded(tab: TabSession, run: RunRecord): void;
+  /** Paths edited by tool calls of other tabs' runs that overlapped `run` (normalized keys). */
+  foreignPaths(tab: TabSession, run: RunRecord): Set<string>;
+}
+
+export interface RunContext {
+  checkpoints?: CheckpointSource;
+  overlap?: OverlapTracker;
+}
+
+/** On-disk form of a tab (HistoryStore). */
+export interface PersistedTab {
+  version: 1;
+  id: string;
+  title: string;
+  titled: boolean;
+  cwd?: string;
+  sessionId?: string;
+  sessionMode?: Mode;
+  mode: Mode;
+  model?: string;
+  chips: ContextChip[];
+  transcript: TranscriptItem[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** Case-insensitive on Windows, forward slashes, relative to the tab root. */
+export function pathKey(root: string, p: string): string {
+  let rel = p.replace(/\\/g, '/');
+  const r = root.replace(/\\/g, '/').replace(/\/$/, '');
+  if (rel.toLowerCase().startsWith(r.toLowerCase() + '/')) rel = rel.slice(r.length + 1);
+  rel = rel.replace(/^\.\//, '');
+  return process.platform === 'win32' ? rel.toLowerCase() : rel;
+}
+
 /** One chat tab: its CLI session, transcript, and at most one active run. */
 export class TabSession {
-  readonly id = newId('tab');
+  readonly id: string;
   title = 'New chat';
   private titled = false;
+  createdAt = Date.now();
+  updatedAt = Date.now();
+  /** Paths edited/deleted by each run's tool calls (normalized keys), for overlap attribution. */
+  readonly touched = new Map<string, Set<string>>();
   sessionId?: string;
   /** Mode the CLI session is currently in (sticky across --resume). */
   sessionMode?: Mode;
@@ -52,9 +97,54 @@ export class TabSession {
     mode: Mode,
     model: string | undefined,
     private readonly events: TabEvents,
+    restore?: PersistedTab,
   ) {
     this.mode = mode;
     this.model = model;
+    this.id = restore?.id ?? newId('tab');
+    if (restore) {
+      this.title = restore.title;
+      this.titled = restore.titled;
+      this.sessionId = restore.sessionId;
+      this.sessionMode = restore.sessionMode;
+      this.chips = restore.chips ?? [];
+      this.createdAt = restore.createdAt;
+      this.updatedAt = restore.updatedAt;
+      for (const item of restore.transcript) {
+        // Runs that were active when VS Code closed can't be continued as-is.
+        if (item.role === 'run' && (item.status === 'running' || item.status === 'queued')) {
+          item.status = 'interrupted';
+          if (item.changes?.status === 'pending') {
+            item.changes = { ...item.changes, status: 'unavailable', message: 'VS Code closed during this run; its changes were not recorded.' };
+          }
+        }
+        this.transcript.push(item);
+      }
+    }
+  }
+
+  serialize(): PersistedTab {
+    return {
+      version: 1,
+      id: this.id,
+      title: this.title,
+      titled: this.titled,
+      cwd: this.cwd,
+      sessionId: this.sessionId,
+      sessionMode: this.sessionMode,
+      mode: this.mode,
+      model: this.model,
+      chips: this.chips,
+      transcript: this.transcript,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+    };
+  }
+
+  rename(title: string): void {
+    this.title = title.trim().slice(0, 200) || this.title;
+    this.titled = true;
+    this.events.onTabUpdated(this);
   }
 
   get running(): boolean {
@@ -135,6 +225,7 @@ export class TabSession {
       at: Date.now(),
       chips: attached.length ? attached : undefined,
     };
+    this.updatedAt = Date.now();
     const run: RunRecord = {
       id: newId('run'),
       role: 'run',
@@ -152,7 +243,8 @@ export class TabSession {
   }
 
   /** Starts the queued run. Resolves when it finishes. */
-  async start(backend: AgentBackend, settings: RunSettings, checkpoints?: CheckpointSource): Promise<void> {
+  async start(backend: AgentBackend, settings: RunSettings, ctx: RunContext = {}): Promise<void> {
+    const { checkpoints, overlap } = ctx;
     const active = this.active;
     if (!active || active.handle) return;
     const run = active.run;
@@ -201,6 +293,10 @@ export class TabSession {
       this.events.onRunChanges(this, run);
     }
 
+    const touched = new Set<string>();
+    this.touched.set(run.id, touched);
+    if (run.mode === 'agent') overlap?.agentRunStarted(this, run);
+
     const prompt = buildPrompt({
       text: user.text,
       mode: run.mode,
@@ -225,6 +321,10 @@ export class TabSession {
         if (ev.kind === 'modeSwitched' && (ev.to === 'agent' || ev.to === 'ask' || ev.to === 'plan')) {
           this.sessionMode = ev.to;
         }
+        if (ev.kind === 'toolCompleted' && !ev.tool.error && (ev.tool.uiKind === 'edit' || ev.tool.uiKind === 'delete')) {
+          const p = (ev.tool.result?.path as string | undefined) || (ev.tool.args.path as string | undefined);
+          if (p && this.cwd) touched.add(pathKey(this.cwd, p));
+        }
         this.events.onRunEvent(this, run, ev);
       },
     );
@@ -238,7 +338,17 @@ export class TabSession {
       try {
         const postSha = await ckpt.snapshot(`post:${this.id}:${run.id}`);
         const files = await ckpt.diff(preSha, postSha);
-        run.changes = { status: 'ready', preSha, postSha, files: files.map((f) => ({ ...f, state: 'pending' as const })) };
+        // Files another overlapping tab's run edited (and this run didn't) are flagged.
+        const foreign = overlap?.foreignPaths(this, run) ?? new Set<string>();
+        run.changes = {
+          status: 'ready',
+          preSha,
+          postSha,
+          files: files.map((f) => {
+            const isForeign = foreign.has(pathKey(this.cwd!, f.path)) && !touched.has(pathKey(this.cwd!, f.path));
+            return { ...f, state: 'pending' as const, ...(isForeign ? { foreign: true } : {}) };
+          }),
+        };
       } catch (e) {
         run.changes = {
           status: 'unavailable',
@@ -249,7 +359,14 @@ export class TabSession {
       }
       this.events.onRunChanges(this, run);
     }
+    if (run.mode === 'agent') overlap?.agentRunEnded(this, run);
     this.finish(run, outcome);
+  }
+
+  /** Attach a warning to a run (e.g. overlapping Agent runs). */
+  addWarning(run: RunRecord, text: string): void {
+    run.warnings = [...(run.warnings ?? []).filter((w) => w !== text), text];
+    this.events.onRunWarnings(this, run);
   }
 
   findRun(runId: string): RunRecord | undefined {
@@ -261,6 +378,9 @@ export class TabSession {
     run.status = outcome.status;
     run.outcome = outcome;
     run.endedAt = Date.now();
+    // Merge streamed deltas: same rendering, far smaller history files.
+    run.events = compactEvents(run.events);
+    this.updatedAt = Date.now();
     if (this.active?.run === run) this.active = undefined;
     this.events.onRunFinished(this, run, outcome);
     this.events.onTabUpdated(this);

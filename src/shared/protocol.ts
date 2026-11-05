@@ -64,6 +64,8 @@ export const ChangedFileSchema = z.object({
   removed: z.number(),
   binary: z.boolean(),
   state: z.enum(['pending', 'kept', 'reverted']),
+  /** Also edited by another tab's Agent run that overlapped this one; skipped by Revert all. */
+  foreign: z.boolean().optional(),
 });
 export type ChangedFile = z.infer<typeof ChangedFileSchema>;
 
@@ -89,6 +91,8 @@ export const RunRecordSchema = z.object({
   endedAt: z.number().optional(),
   /** Agent runs only: checkpoint and changed files. */
   changes: RunChangesSchema.optional(),
+  /** Non-blocking warnings, e.g. another tab editing the same workspace at the same time. */
+  warnings: z.array(z.string()).optional(),
 });
 export type RunRecord = z.infer<typeof RunRecordSchema>;
 
@@ -124,6 +128,18 @@ export type CliStatus = z.infer<typeof CliStatusSchema>;
 export const ModelOptionSchema = z.object({ id: z.string(), label: z.string(), isDefault: z.boolean().optional() });
 export type ModelOption = z.infer<typeof ModelOptionSchema>;
 
+export const HistoryItemSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+  messageCount: z.number(),
+  /** First user message, for search and preview. */
+  preview: z.string(),
+  open: z.boolean(),
+});
+export type HistoryItem = z.infer<typeof HistoryItemSchema>;
+
 export const MentionItemSchema = z.object({ path: z.string(), isFolder: z.boolean() });
 export type MentionItem = z.infer<typeof MentionItemSchema>;
 
@@ -139,6 +155,12 @@ export const HostMessageSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('tab/updated'), tab: TabSnapshotSchema.omit({ transcript: true, chips: true }) }),
   z.object({ type: z.literal('tab/reset'), tab: TabSnapshotSchema }),
+  z.object({ type: z.literal('tab/created'), tab: TabSnapshotSchema }),
+  z.object({ type: z.literal('tab/closed'), tabId: z.string() }),
+  z.object({ type: z.literal('tab/activated'), tabId: z.string() }),
+  z.object({ type: z.literal('run/warnings'), tabId: z.string(), runId: z.string(), warnings: z.array(z.string()) }),
+  z.object({ type: z.literal('history/list'), items: z.array(HistoryItemSchema) }),
+  z.object({ type: z.literal('history/show') }),
   z.object({ type: z.literal('chips/updated'), tabId: z.string(), chips: z.array(ContextChipSchema) }),
   z.object({ type: z.literal('mention/results'), requestId: z.number(), items: z.array(MentionItemSchema) }),
   z.object({ type: z.literal('models/list'), models: z.array(ModelOptionSchema), source: z.enum(['cli', 'setting']) }),
@@ -164,6 +186,14 @@ export type HostMessage = z.infer<typeof HostMessageSchema>;
 export const WebviewMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ready') }),
   z.object({ type: z.literal('tab/new') }),
+  z.object({ type: z.literal('tab/close'), tabId: z.string() }),
+  z.object({ type: z.literal('tab/activate'), tabId: z.string() }),
+  z.object({ type: z.literal('tab/rename'), tabId: z.string(), title: z.string().min(1).max(200) }),
+  z.object({ type: z.literal('history/request') }),
+  z.object({ type: z.literal('history/open'), id: z.string() }),
+  z.object({ type: z.literal('history/delete'), id: z.string() }),
+  /** Resume an interrupted run: send "continue" with --resume. */
+  z.object({ type: z.literal('run/resume'), tabId: z.string() }),
   z.object({
     type: z.literal('message/send'),
     tabId: z.string(),

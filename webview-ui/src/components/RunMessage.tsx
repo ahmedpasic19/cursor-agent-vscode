@@ -62,6 +62,11 @@ export function RunMessage({ run, view, isLatest }: Props) {
   return (
     <div className="run">
       {run.status === 'queued' && <div className="run-note">Queued — waiting for another run to finish…</div>}
+      {run.warnings?.map((w) => (
+        <div key={w} className="warn-banner" role="status">
+          ⚠ {w}
+        </div>
+      ))}
       {run.status === 'running' && blocks.length === 0 && <div className="run-note pulsing">Working…</div>}
       {blocks.map((b, i) => {
         switch (b.type) {
@@ -76,7 +81,16 @@ export function RunMessage({ run, view, isLatest }: Props) {
         }
       })}
       {run.status === 'stopped' && <div className="run-note">Stopped. Send a message to continue this chat.</div>}
-      {run.status === 'interrupted' && <div className="run-note">Interrupted.</div>}
+      {run.status === 'interrupted' && (
+        <div className="run-note">
+          Interrupted — VS Code closed while this was running.{' '}
+          {isLatest && !running && (
+            <button className="btn secondary small" onClick={() => send({ type: 'run/resume', tabId })} title="Send “continue” to the same session">
+              Resume
+            </button>
+          )}
+        </div>
+      )}
       {(run.status === 'error' || run.status === 'timeout') && (
         <ErrorBanner tabId={tabId} status={run.status} outcome={run.outcome} canRetry={isLatest && !running} />
       )}

@@ -13,9 +13,10 @@ import { join, resolve } from 'node:path';
 const root = resolve(import.meta.dirname, '..', '..');
 
 await build({
-  entryPoints: [join(root, 'test/integration/suite.ts')],
+  entryPoints: { suite: join(root, 'test/integration/suite.ts'), restore: join(root, 'test/integration/restore.ts') },
   bundle: true,
-  outfile: join(root, 'dist-test/suite.cjs'),
+  outdir: join(root, 'dist-test'),
+  outExtension: { '.js': '.cjs' },
   format: 'cjs',
   platform: 'node',
   target: 'node20',
@@ -62,14 +63,18 @@ const candidates = [
 const vscodeExecutablePath = candidates.find((p) => existsSync(p));
 
 const record = join(tmp, 'stdin-record.json');
+const common = {
+  ...(vscodeExecutablePath ? { vscodeExecutablePath } : { version: 'stable' }),
+  extensionDevelopmentPath: root,
+  launchArgs: [ws, '--disable-extensions', '--disable-extension', 'vscode.git', '--disable-extension', 'vscode.github', '--disable-extension', 'vscode.git-base', '--user-data-dir', userData, '--extensions-dir', join(tmp, 'ext'), '--skip-welcome', '--skip-release-notes'],
+  extensionTestsEnv: { FAKE_RECORD: record, FAKE_FIXTURE: 'ask-simple', FAKE_DELAY_MS: '1' },
+};
 try {
-  await runTests({
-    ...(vscodeExecutablePath ? { vscodeExecutablePath } : { version: 'stable' }),
-    extensionDevelopmentPath: root,
-    extensionTestsPath: join(root, 'dist-test/suite.cjs'),
-    launchArgs: [ws, '--disable-extensions', '--disable-extension', 'vscode.git', '--disable-extension', 'vscode.github', '--disable-extension', 'vscode.git-base', '--user-data-dir', userData, '--extensions-dir', join(tmp, 'ext'), '--skip-welcome', '--skip-release-notes'],
-    extensionTestsEnv: { FAKE_RECORD: record, FAKE_FIXTURE: 'ask-simple', FAKE_DELAY_MS: '1' },
-  });
+  // Launch 1: all feature tests; leaves tabs open for the restart check.
+  await runTests({ ...common, extensionTestsPath: join(root, 'dist-test/suite.cjs') });
+  // Launch 2: same profile and workspace = a VS Code restart.
+  console.log('\n--- restarting VS Code with the same profile ---\n');
+  await runTests({ ...common, extensionTestsPath: join(root, 'dist-test/restore.cjs') });
   console.log(`\nIntegration tests passed (workspace: ${ws})`);
 } catch (e) {
   console.error('Integration tests failed', e);

@@ -39,7 +39,7 @@ const SLASH: SlashCommand[] = [
   { name: 'clear', hint: 'Start a new session in this tab' },
   { name: 'model', args: '[id]', hint: 'Pick or set the model' },
   { name: 'mode', args: '[agent|ask|plan]', hint: 'Set or cycle the mode' },
-  { name: 'history', hint: 'Past chats (Phase 5)' },
+  { name: 'history', hint: 'Search past chats' },
 ];
 
 type Popup =
@@ -48,10 +48,16 @@ type Popup =
   | undefined;
 
 let mentionRequest = 0;
+/** Unsent text per tab (the composer remounts on tab switch). */
+const drafts = new Map<string, string>();
 
 export function Composer(props: Props) {
   const { tabId, chips, running, mode, model, models, modesSupported, disabled, focusRequest } = props;
-  const [text, setText] = useState('');
+  const [text, setTextState] = useState(() => (tabId ? (drafts.get(tabId) ?? '') : ''));
+  const setText = (v: string) => {
+    setTextState(v);
+    if (tabId) drafts.set(tabId, v);
+  };
   const [popup, setPopup] = useState<Popup>();
   const [active, setActive] = useState(0);
   const [modelOpen, setModelOpen] = useState(0);
@@ -159,7 +165,8 @@ export function Composer(props: Props) {
         return true;
       }
       case 'history':
-        showNotice('info', 'History arrives in Phase 5.');
+        send({ type: 'history/request' });
+        useStore.getState().setHistoryOpen(true);
         clear();
         return true;
       default:

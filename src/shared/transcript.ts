@@ -90,6 +90,25 @@ function findTool(blocks: Block[], callId: string): Extract<Block, { type: 'tool
   return undefined;
 }
 
+/**
+ * Merge consecutive text deltas and consecutive thinking deltas. buildRunView() gives the
+ * same blocks for the compacted list; history files get much smaller.
+ */
+export function compactEvents(events: AgentEvent[]): AgentEvent[] {
+  const out: AgentEvent[] = [];
+  for (const ev of events) {
+    const last = out[out.length - 1];
+    if (ev.kind === 'text' && last?.kind === 'text') {
+      out[out.length - 1] = { kind: 'text', text: last.text + ev.text };
+    } else if (ev.kind === 'thinking' && last?.kind === 'thinking') {
+      out[out.length - 1] = { kind: 'thinking', text: last.text + ev.text, at: last.at };
+    } else {
+      out.push(ev);
+    }
+  }
+  return out;
+}
+
 export function buildRunView(events: AgentEvent[]): RunView {
   const view = emptyRunView();
   for (const ev of events) applyEvent(view, ev);

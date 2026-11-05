@@ -93,7 +93,15 @@ export class ChangesController {
   async revertFile(tabId: string, runId: string, path: string): Promise<boolean> {
     const x = this.lookup(tabId, runId);
     if (!x) return false;
-    if ((await this.conflicts(x.svc, x.post, [path])).length) {
+    const file = x.changes.files.find((f) => f.path === path);
+    if (file?.foreign) {
+      const ok = await this.confirm(
+        `${path} was edited by another tab's run.`,
+        "That run overlapped with this one, so this file's change probably isn't from this run. Reverting it undoes the other tab's edit.",
+        'Revert anyway',
+      );
+      if (!ok) return false;
+    } else if ((await this.conflicts(x.svc, x.post, [path])).length) {
       const ok = await this.confirm(
         `${path} changed after this run.`,
         'It was edited later (by you or another tab). Reverting restores the version from before this run and discards those later edits.',
@@ -120,7 +128,9 @@ export class ChangesController {
   async revertAll(tabId: string, runId: string): Promise<boolean> {
     const x = this.lookup(tabId, runId);
     if (!x) return false;
-    const paths = x.changes.files.filter((f) => f.state !== 'reverted').map((f) => f.path);
+    // Files attributed to another overlapping tab's run are left alone (PLAN.md 5.6).
+    const paths = x.changes.files.filter((f) => f.state !== 'reverted' && !f.foreign).map((f) => f.path);
+    const skipped = x.changes.files.filter((f) => f.state !== 'reverted' && f.foreign).map((f) => f.path);
     if (!paths.length) return false;
     const conflicts = await this.conflicts(x.svc, x.post, paths);
     const detail = [
@@ -128,6 +138,7 @@ export class ChangesController {
       conflicts.length
         ? `\nThese changed after the run and their later edits will be lost:\n${conflicts.map((c) => `• ${c}`).join('\n')}`
         : '',
+      skipped.length ? `\n\nSkipped (edited by another tab's overlapping run):\n${skipped.map((c) => `• ${c}`).join('\n')}` : '',
     ].join('');
     const ok = await this.confirm(`Revert all changes from this run?`, detail, 'Revert all');
     if (!ok) return false;
@@ -152,7 +163,7 @@ export class ChangesController {
     const target = runs[0]!.changes!.preSha!;
     // The last run that touched a file is the one whose post state must still match.
     const lastPost = new Map<string, string>();
-    for (const r of runs) for (const f of r.changes!.files) lastPost.set(f.path, r.changes!.postSha!);
+    for (const r of runs) for (const f of r.changes!.files) if (!f.foreign) lastPost.set(f.path, r.changes!.postSha!);
     const paths = [...lastPost.keys()];
     if (!paths.length) {
       void vscode.window.showInformationMessage('No file changes to restore after this message.');
@@ -169,7 +180,7 @@ export class ChangesController {
     );
     if (!ok) return false;
     for (const p of paths) await svc.restoreFile(target, p);
-    for (const r of runs) this.setState(tab, r, r.changes!.files.map((f) => f.path), 'reverted');
+    for (const r of runs) this.setState(tab, r, r.changes!.files.filter((f) => !f.foreign).map((f) => f.path), 'reverted');
     return true;
   }
 }

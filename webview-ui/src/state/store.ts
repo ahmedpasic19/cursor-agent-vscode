@@ -3,6 +3,7 @@ import type { Mode } from '../../../src/shared/events';
 import type {
   CliStatus,
   ContextChip,
+  HistoryItem,
   HostMessage,
   MentionItem,
   ModelOption,
@@ -35,6 +36,13 @@ interface Store {
   modelsSource?: 'cli' | 'setting';
   mention: { requestId: number; items: MentionItem[] };
   notice?: { id: number; level: 'info' | 'warning' | 'error'; text: string };
+  /** Tabs with activity the user hasn't seen (finished or streamed while inactive). */
+  unread: Record<string, boolean>;
+  history: HistoryItem[];
+  historyOpen: boolean;
+  /** Webview-initiated tab switch (optimistic; host is told separately). */
+  activate(tabId: string): void;
+  setHistoryOpen(open: boolean): void;
   handle(msg: HostMessage): void;
   dismissNotice(): void;
   /** Local-only notice (e.g. from a slash command). */
@@ -57,6 +65,19 @@ export const useStore = create<Store>((set, get) => ({
   focusRequest: 0,
   models: [],
   mention: { requestId: -1, items: [] },
+  unread: {},
+  history: [],
+  historyOpen: false,
+
+  activate(tabId) {
+    const { unread } = get();
+    const { [tabId]: _seen, ...rest } = unread;
+    set({ activeTabId: tabId, unread: rest, historyOpen: false });
+  },
+
+  setHistoryOpen(open) {
+    set({ historyOpen: open });
+  },
 
   dismissNotice() {
     set({ notice: undefined });
@@ -108,6 +129,7 @@ export const useStore = create<Store>((set, get) => ({
         break;
       }
       case 'run/event': {
+        if (msg.tabId !== s.activeTabId && !s.unread[msg.tabId]) set({ unread: { ...s.unread, [msg.tabId]: true } });
         const tab = s.tabs[msg.tabId];
         const run = tab?.transcript.find((i): i is RunRecord => i.role === 'run' && i.id === msg.runId);
         const view = tab?.views[msg.runId];
@@ -125,9 +147,42 @@ export const useStore = create<Store>((set, get) => ({
         const transcript = tab.transcript.map((i) =>
           i.role === 'run' && i.id === msg.runId ? { ...i, status: msg.status, outcome: msg.outcome, endedAt: Date.now() } : i,
         );
+        set({
+          tabs: { ...s.tabs, [msg.tabId]: { ...tab, transcript } },
+          tick: s.tick + 1,
+          unread: msg.tabId !== s.activeTabId ? { ...s.unread, [msg.tabId]: true } : s.unread,
+        });
+        break;
+      }
+      case 'tab/created':
+        set({
+          tabs: { ...s.tabs, [msg.tab.id]: tabFromSnapshot(msg.tab) },
+          tabOrder: s.tabOrder.includes(msg.tab.id) ? s.tabOrder : [...s.tabOrder, msg.tab.id],
+          tick: s.tick + 1,
+        });
+        break;
+      case 'tab/closed': {
+        const { [msg.tabId]: _gone, ...tabs } = s.tabs;
+        const { [msg.tabId]: _u, ...unread } = s.unread;
+        set({ tabs, unread, tabOrder: s.tabOrder.filter((id) => id !== msg.tabId) });
+        break;
+      }
+      case 'tab/activated':
+        get().activate(msg.tabId);
+        break;
+      case 'run/warnings': {
+        const tab = s.tabs[msg.tabId];
+        if (!tab) return;
+        const transcript = tab.transcript.map((i) => (i.role === 'run' && i.id === msg.runId ? { ...i, warnings: msg.warnings } : i));
         set({ tabs: { ...s.tabs, [msg.tabId]: { ...tab, transcript } }, tick: s.tick + 1 });
         break;
       }
+      case 'history/list':
+        set({ history: msg.items });
+        break;
+      case 'history/show':
+        set({ historyOpen: true });
+        break;
       case 'composer/focus':
         set({ focusRequest: s.focusRequest + 1 });
         break;

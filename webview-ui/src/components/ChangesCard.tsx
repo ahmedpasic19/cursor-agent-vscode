@@ -60,6 +60,11 @@ export function ChangesCard({ runId, changes, runActive }: { runId: string; chan
               <span className="change-name">{f.path.split('/').pop()}</span>
               <span className="change-dir">{f.path.includes('/') ? f.path.slice(0, f.path.lastIndexOf('/')) : ''}</span>
             </button>
+            {f.foreign && (
+              <span className="chip-flag" title="Also edited by another tab's run that overlapped this one. Revert all skips it.">
+                other tab
+              </span>
+            )}
             {f.binary ? (
               <span className="muted small">binary</span>
             ) : (

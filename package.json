@@ -2,7 +2,7 @@
   "name": "cursor-agent-vscode",
   "displayName": "Cursor Agent",
   "description": "Cursor's agent in a VS Code sidebar chat (personal use).",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "publisher": "local",
   "private": true,
   "license": "UNLICENSED",
@@ -97,6 +97,12 @@
         "command": "cursorAgent.addWorkspaceProblemsToChat",
         "title": "Add All Workspace Problems to Chat",
         "category": "Cursor Agent"
+      },
+      {
+        "command": "cursorAgent.showHistory",
+        "title": "Show Chat History",
+        "category": "Cursor Agent",
+        "icon": "$(history)"
       }
     ],
     "menus": {
@@ -104,7 +110,12 @@
         {
           "command": "cursorAgent.newChat",
           "when": "view == cursorAgent.chat",
-          "group": "navigation"
+          "group": "navigation@1"
+        },
+        {
+          "command": "cursorAgent.showHistory",
+          "when": "view == cursorAgent.chat",
+          "group": "navigation@2"
         }
       ],
       "editor/context": [
@@ -258,6 +269,12 @@
           },
           "default": [],
           "description": "Extra arguments appended to every cursor-agent invocation."
+        },
+        "cursorAgent.historyLimit": {
+          "type": "number",
+          "default": 200,
+          "minimum": 10,
+          "description": "Maximum saved chats per workspace; the oldest closed chats are deleted first."
         }
       }
     }

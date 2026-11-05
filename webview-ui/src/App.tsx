@@ -3,14 +3,19 @@ import type { Mode } from '../../src/shared/events';
 import { CliBanner } from './components/CliBanner';
 import { Composer } from './components/Composer';
 import { ContextChips } from './components/ContextChips';
+import { HistoryView } from './components/HistoryView';
 import { Notice } from './components/Notice';
 import { RunMessage } from './components/RunMessage';
+import { TabBar } from './components/TabBar';
 import { TabContext } from './components/tools/util';
 import { useStore } from './state/store';
 import { send } from './vscode';
 
+/** Composer mode per tab, kept while switching tabs. */
+const composerModes = new Map<string, Mode>();
+
 export function App() {
-  const { tabs, activeTabId, defaultMode, focusRequest, cli, models } = useStore();
+  const { tabs, activeTabId, defaultMode, focusRequest, cli, models, historyOpen } = useStore();
   useStore((s) => s.tick); // re-render on streamed events
   const tab = activeTabId ? tabs[activeTabId] : undefined;
   const [mode, setMode] = useState<Mode>(defaultMode);
@@ -19,8 +24,11 @@ export function App() {
   const modesSupported = cli.features?.modes ?? true;
 
   useEffect(() => {
-    if (tab) setMode(tab.meta.mode);
+    if (tab) setMode(composerModes.get(tab.meta.id) ?? tab.meta.mode);
   }, [tab?.meta.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (tab) composerModes.set(tab.meta.id, mode);
+  }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // "Run this plan" switches the tab to Agent; mirror that in the composer.
   useEffect(() => {
@@ -61,18 +69,10 @@ export function App() {
   return (
     <TabContext.Provider value={ctx}>
       <div className="app">
-        <header className="topbar">
-          <span className="tab-title" title={tab?.meta.title}>
-            {tab?.meta.title ?? 'Cursor Agent'}
-          </span>
-          <span className="spacer" />
-          {running && <span className="running-dot" title="Running" />}
-          <button className="icon-btn" title="New chat" aria-label="New chat" onClick={() => send({ type: 'tab/new' })}>
-            +
-          </button>
-        </header>
+        <TabBar />
         <CliBanner cli={cli} />
-        <div className="messages" ref={listRef} onScroll={onScroll}>
+        {historyOpen && <HistoryView />}
+        <div className="messages" ref={listRef} onScroll={onScroll} hidden={historyOpen}>
           {!tab || tab.transcript.length === 0 ? (
             <div className="empty">
               <p>No chats yet.</p>
@@ -110,6 +110,7 @@ export function App() {
         </div>
         <Notice />
         <Composer
+          key={tab?.meta.id ?? 'none'}
           tabId={tab?.meta.id}
           chips={tab?.chips ?? []}
           running={running}
