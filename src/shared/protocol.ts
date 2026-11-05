@@ -34,6 +34,18 @@ export const ContextChipSchema = z.discriminatedUnion('kind', [
     changed: z.boolean().optional(),
   }),
   z.object({ id: z.string(), kind: z.literal('file'), path: z.string(), absPath: z.string(), isFolder: z.boolean() }),
+  z.object({
+    id: z.string(),
+    kind: z.literal('image'),
+    /** Display name (file name, or "Pasted image"). */
+    name: z.string(),
+    /** Absolute path on disk (pasted images are saved to extension storage). */
+    absPath: z.string(),
+    mime: z.string(),
+    bytes: z.number(),
+    /** Small data-URL thumbnail for the chip and the sent bubble. */
+    thumb: z.string().optional(),
+  }),
   z.object({ id: z.string(), kind: z.literal('terminal'), name: z.string(), text: z.string(), lineCount: z.number() }),
   z.object({
     id: z.string(),
@@ -207,7 +219,14 @@ export const UsageSummarySchema = z.object({
 });
 export type UsageSummary = z.infer<typeof UsageSummarySchema>;
 
-export const MentionItemSchema = z.object({ path: z.string(), isFolder: z.boolean() });
+export const MentionItemSchema = z.object({
+  path: z.string(),
+  isFolder: z.boolean(),
+  /** Absolute workspace folder `path` is relative to. */
+  root: z.string().optional(),
+  /** Workspace folder name (only when several folders are open). */
+  folder: z.string().optional(),
+});
 export type MentionItem = z.infer<typeof MentionItemSchema>;
 
 // ---------- host → webview ----------
@@ -291,7 +310,18 @@ export const WebviewMessageSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('chip/remove'), tabId: z.string(), chipId: z.string() }),
   z.object({ type: z.literal('mention/search'), tabId: z.string(), query: z.string(), requestId: z.number() }),
-  z.object({ type: z.literal('mention/pick'), tabId: z.string(), path: z.string(), isFolder: z.boolean() }),
+  z.object({ type: z.literal('mention/pick'), tabId: z.string(), path: z.string(), isFolder: z.boolean(), root: z.string().optional() }),
+  /** Pasted / dropped / picked image bytes (base64, no data: prefix) plus a small thumbnail. */
+  z.object({
+    type: z.literal('image/add'),
+    tabId: z.string(),
+    name: z.string(),
+    mime: z.string(),
+    data: z.string(),
+    thumb: z.string().optional(),
+  }),
+  /** Images dragged from the VS Code explorer (file:// URIs); attached in place, not copied. */
+  z.object({ type: z.literal('image/addUris'), tabId: z.string(), uris: z.array(z.string()).max(20) }),
   /** /clear: start a new CLI session in the same tab. */
   z.object({ type: z.literal('tab/clear'), tabId: z.string() }),
   z.object({ type: z.literal('tab/setModel'), tabId: z.string(), model: z.string().optional() }),

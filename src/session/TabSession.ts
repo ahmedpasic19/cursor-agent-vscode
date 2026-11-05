@@ -4,7 +4,7 @@ import type { AgentEvent, Mode, RunOutcome } from '../shared/events';
 import { addChip, type AddResult } from '../context/chips';
 import type { ContextChip, RunRecord, TabSnapshot, TranscriptItem, UserMessage } from '../shared/protocol';
 import { compactEvents } from '../shared/transcript';
-import { buildPrompt, titleFrom } from './promptBuilder';
+import { buildPrompt, extraRoots, titleFrom } from './promptBuilder';
 
 /** Placeholder while a run is starting (taking its checkpoint). */
 const PENDING_HANDLE: RunHandle = { done: new Promise(() => {}), stop: () => {} };
@@ -19,6 +19,8 @@ export interface RunSettings {
   timeoutMs: number;
   /** CLI supports -w (from --help). */
   worktreeSupported?: boolean;
+  /** All workspace folders; the ones other than this tab's cwd are passed as extra roots. */
+  workspaceRoots?: string[];
 }
 
 export interface TabEvents {
@@ -334,7 +336,10 @@ export class TabSession {
       mode: run.mode,
       sessionMode: this.sessionId ? this.sessionMode : undefined,
       chips: user.chips,
+      cwd: this.cwd,
     });
+    const { workspaceRoots, ...runSettings } = settings;
+    const addDirs = extraRoots(this.cwd, workspaceRoots ?? [], user.chips ?? []);
 
     active.handle = backend.run(
       {
@@ -343,8 +348,9 @@ export class TabSession {
         mode: run.mode,
         model: run.model,
         resumeSessionId: this.sessionId,
-        ...settings,
+        ...runSettings,
         worktreeName: useWorktree ? this.worktreeName : undefined,
+        addDirs: addDirs.length ? addDirs : undefined,
       },
       (ev) => {
         run.events.push(ev);

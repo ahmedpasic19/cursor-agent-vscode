@@ -4,6 +4,7 @@
  * invalidated by a file-system watcher.
  */
 import { execFile } from 'node:child_process';
+import { relative } from 'node:path';
 import * as vscode from 'vscode';
 import { type Candidate, fuzzyFilter, withFolders } from './fuzzy';
 
@@ -21,15 +22,26 @@ export class FileIndex implements vscode.Disposable {
   }
 
   async search(root: string, query: string, limit = 50): Promise<Candidate[]> {
-    let p = this.cache.get(root);
-    if (!p) {
-      p = this.load(root);
-      this.cache.set(root, p);
-    }
-    return fuzzyFilter(query.trim(), await p, limit);
+    return this.searchAll([{ root }], query, limit);
   }
 
-  private async load(root: string): Promise<Candidate[]> {
+  /** Searches several workspace folders at once; candidates carry their `root` (and `folder` name). */
+  async searchAll(roots: { root: string; folder?: string }[], query: string, limit = 50): Promise<Candidate[]> {
+    const lists = await Promise.all(roots.map((r) => this.get(r.root, r.folder)));
+    return fuzzyFilter(query.trim(), lists.flat(), limit);
+  }
+
+  private get(root: string, folder?: string): Promise<Candidate[]> {
+    const key = `${root}|${folder ?? ''}`;
+    let p = this.cache.get(key);
+    if (!p) {
+      p = this.load(root, folder);
+      this.cache.set(key, p);
+    }
+    return p;
+  }
+
+  private async load(root: string, folder?: string): Promise<Candidate[]> {
     const t0 = Date.now();
     let files = await gitFiles(root);
     let source = 'git';
@@ -37,10 +49,10 @@ export class FileIndex implements vscode.Disposable {
       source = 'findFiles';
       const base = vscode.Uri.file(root);
       const uris = await vscode.workspace.findFiles(new vscode.RelativePattern(base, '**/*'), DEFAULT_EXCLUDE, MAX_FILES);
-      files = uris.map((u) => vscode.workspace.asRelativePath(u, false).replace(/\\/g, '/'));
+      files = uris.map((u) => relative(root, u.fsPath).replace(/\\/g, '/'));
     }
     this.log(`[mentions] indexed ${files.length} files via ${source} in ${Date.now() - t0} ms`);
-    return withFolders(files.slice(0, MAX_FILES));
+    return withFolders(files.slice(0, MAX_FILES), { root, folder });
   }
 
   dispose(): void {

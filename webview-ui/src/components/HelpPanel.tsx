@@ -10,7 +10,8 @@ const SHORTCUTS: [string, string][] = [
   ['@', 'Attach files and folders'],
   ['/', 'Commands (/model, /mode, /history, /clear)'],
   ['Alt+N', 'New session'],
-  ['Ctrl+I · Ctrl+L', 'Focus chat · add selection'],
+  ['Ctrl+I', 'Add selection (or focus chat with nothing selected)'],
+  ['Ctrl+V · drop', 'Attach a screenshot or image'],
 ];
 
 /** /help: modes and keyboard shortcuts, shown above the composer. */

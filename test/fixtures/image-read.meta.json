@@ -1,0 +1,8 @@
+{
+  "name": "image-read",
+  "note": "Image attached by path (<image>) + --add-dir; the CLI's read tool passed the PNG to the model, which read its text. Process was killed after the result (normal grace-kill case).",
+  "args": ["-p", "--trust", "--output-format", "stream-json", "--mode", "ask", "--workspace", "C:/probe/ws", "--add-dir", "C:/probe/img"],
+  "cwd": "C:/probe/ws",
+  "exitCode": 0,
+  "signal": null
+}

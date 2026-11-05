@@ -103,16 +103,14 @@ function setFileState(runId: string, paths: string[] | 'all', state: ChangedFile
   postChanges(runId);
 }
 
-const FAKE_FILES = withFolders([
-  'src/math.ts',
-  'src/app.ts',
-  'src/booking/api.ts',
-  'src/booking/types.ts',
-  'src/components/Button.tsx',
-  'test/math.test.ts',
-  'README.md',
-  'package.json',
-]);
+// Two workspace folders, like a multi-root workspace.
+const FAKE_FILES = [
+  ...withFolders(
+    ['src/math.ts', 'src/app.ts', 'src/booking/api.ts', 'src/booking/types.ts', 'src/components/Button.tsx', 'test/math.test.ts', 'README.md', 'package.json'],
+    { root: 'C:/ws/web', folder: 'web' },
+  ),
+  ...withFolders(['src/math.ts', 'src/server.ts', 'README.md'], { root: 'C:/ws/api', folder: 'api' }),
+];
 const MODELS = [
   { id: 'auto', label: 'Auto', isDefault: true },
   { id: 'composer-2.5-fast', label: 'Composer 2.5 Fast' },
@@ -310,7 +308,10 @@ function replay(sc: Scenario, text: string, mode: Mode, attached: ContextChip[] 
         );
         break;
       case 'mention/pick':
-        addFake({ id: chipId(), kind: 'file', path: msg.path, absPath: `C:/ws/${msg.path}`, isFolder: msg.isFolder });
+        addFake({ id: chipId(), kind: 'file', path: msg.path, absPath: `${msg.root ?? 'C:/ws'}/${msg.path}`, isFolder: msg.isFolder });
+        break;
+      case 'image/add':
+        addFake({ id: chipId(), kind: 'image', name: msg.name, absPath: `C:/storage/attachments/${msg.name}`, mime: msg.mime, bytes: Math.round((msg.data.length * 3) / 4), thumb: msg.thumb });
         break;
       case 'changes/revertFile':
         setFileState(msg.runId, [msg.path], 'reverted');

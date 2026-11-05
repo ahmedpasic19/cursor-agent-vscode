@@ -20,7 +20,7 @@ const TIPS = [
   'Type /model to pick the right model for the job.',
   'Shift+Tab switches between Agent, Ask and Plan.',
   'Type @ to attach files and folders.',
-  'Select code and press Ctrl+L to add it to the chat.',
+  'Select code and press Ctrl+I to add it to the chat.',
   'Every change can be reviewed and reverted.',
   'Press ↑ in an empty box to recall your last message.',
 ];

@@ -7,7 +7,9 @@ import { workspaceHash } from './checkpoints/CheckpointService';
 import { DiffProvider } from './checkpoints/DiffProvider';
 import { registerAddToChat } from './context/commands';
 import { fileChip } from './context/ContextCollector';
+import { imageChipForPath, MAX_IMAGE_BYTES, saveImage } from './context/Attachments';
 import { FileIndex } from './context/FileIndex';
+import { SelectionLens } from './context/SelectionLens';
 import type { Mode } from './shared/events';
 import type { HostMessage, WebviewMessage } from './shared/protocol';
 import { SessionIndex } from './session/SessionIndex';
@@ -179,6 +181,7 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
       postResultGraceMs: cfg().get<number>('postResultGraceMs', 3000),
       timeoutMs: cfg().get<number>('runTimeoutMinutes', 30) * 60_000,
       worktreeSupported: cli.status.features?.worktree ?? false,
+      workspaceRoots: (vscode.workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath),
     }),
     getMaxConcurrent: () => cfg().get<number>('maxConcurrentRuns', 3),
     getDefaultMode: () => cfg().get<Mode>('defaultMode', 'agent'),
@@ -526,23 +529,56 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
         mgr.getTab(msg.tabId)?.removeChip(msg.chipId);
         break;
       case 'mention/search': {
+        // Several folders open: search all of them (the agent gets the others via --add-dir).
+        const folders = vscode.workspace.workspaceFolders ?? [];
         const root = mgr.getTab(msg.tabId)?.cwd ?? getCwd();
-        if (!root) {
+        const roots = folders.length > 1 ? folders.map((f) => ({ root: f.uri.fsPath, folder: f.name })) : root ? [{ root }] : [];
+        if (!roots.length) {
           bridge.post({ type: 'mention/results', requestId: msg.requestId, items: [] });
           break;
         }
-        void fileIndex.search(root, msg.query).then((items) =>
+        void fileIndex.searchAll(roots, msg.query).then((items) =>
           bridge.post({ type: 'mention/results', requestId: msg.requestId, items }),
         );
         break;
       }
       case 'mention/pick': {
         const tab = mgr.getTab(msg.tabId);
-        const root = tab?.cwd ?? getCwd();
+        const root = msg.root ?? tab?.cwd ?? getCwd();
         if (!tab || !root) break;
         void fileChip(vscode.Uri.joinPath(vscode.Uri.file(root), msg.path)).then((chip) => {
           if (chip) tab.addChip(chip, maxChipLines());
         });
+        break;
+      }
+      case 'image/add': {
+        const tab = mgr.getTab(msg.tabId);
+        if (!tab) break;
+        try {
+          tab.addChip(saveImage(workspaceDir, tab.id, msg), maxChipLines());
+        } catch (e) {
+          bridge.post({ type: 'notice', level: 'error', text: e instanceof Error ? e.message : String(e) });
+        }
+        break;
+      }
+      case 'image/addUris': {
+        const tab = mgr.getTab(msg.tabId);
+        if (!tab) break;
+        void (async () => {
+          for (const u of msg.uris) {
+            try {
+              const uri = vscode.Uri.parse(u, true);
+              if (uri.scheme !== 'file') continue;
+              const stat = await vscode.workspace.fs.stat(uri);
+              const chip = imageChipForPath(uri.fsPath, stat.size);
+              if (!chip) continue;
+              if (stat.size > MAX_IMAGE_BYTES) throw new Error(`${chip.name} is over the 10 MB limit.`);
+              tab.addChip(chip, maxChipLines());
+            } catch (e) {
+              bridge.post({ type: 'notice', level: 'error', text: e instanceof Error ? e.message : String(e) });
+            }
+          }
+        })();
         break;
       }
       case 'tab/clear':
@@ -708,6 +744,8 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     maxChipLines,
     log,
   });
+  const lens = new SelectionLens(() => cfg().get<boolean>('selectionCodeLens', true), process.platform === 'darwin' ? 'Cmd+I' : 'Ctrl+I');
+  context.subscriptions.push(lens, vscode.languages.registerCodeLensProvider({ scheme: 'file' }, lens), vscode.languages.registerCodeLensProvider({ scheme: 'untitled' }, lens));
 
   log('Cursor Agent activated');
   const ready = useSdk() ? Promise.all([cli.refresh(), sdk.refresh()]) : cli.refresh();

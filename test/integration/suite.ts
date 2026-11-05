@@ -17,6 +17,7 @@ function label(c: ContextChip): string {
   if (c.kind === 'selection') return `${c.path}:${c.startLine}-${c.endLine}`;
   if (c.kind === 'file') return `${c.isFolder ? 'folder' : 'file'}:${c.path}`;
   if (c.kind === 'terminal') return `terminal`;
+  if (c.kind === 'image') return `image:${c.name}`;
   return `diagnostics:${c.path ?? '*'}`;
 }
 

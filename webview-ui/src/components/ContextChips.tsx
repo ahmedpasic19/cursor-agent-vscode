@@ -4,6 +4,7 @@ import { send } from '../vscode';
 const ICON: Record<ContextChip['kind'], string> = {
   selection: '⌗',
   file: '📄',
+  image: '🖼',
   terminal: '❯',
   diagnostics: '⚠',
 };
@@ -16,6 +17,8 @@ function label(c: ContextChip): string {
     }
     case 'file':
       return c.isFolder ? `${c.path.split('/').pop()}/` : (c.path.split('/').pop() ?? c.path);
+    case 'image':
+      return c.name;
     case 'terminal':
       return `${c.name} (${c.lineCount} line${c.lineCount === 1 ? '' : 's'})`;
     case 'diagnostics':
@@ -33,6 +36,8 @@ function tooltip(c: ContextChip): string {
     }
     case 'file':
       return `${c.isFolder ? 'Folder' : 'File'}: ${c.path}\nThe agent reads it itself; only the path is sent.`;
+    case 'image':
+      return `Image: ${c.name} (${formatBytes(c.bytes)})\nThe agent opens it from:\n${c.absPath}`;
     case 'terminal':
       return c.text.split('\n').slice(-12).join('\n');
     case 'diagnostics':
@@ -43,7 +48,12 @@ function tooltip(c: ContextChip): string {
   }
 }
 
+function formatBytes(n: number): string {
+  return n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${Math.round(n / 1024)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
 function openChip(c: ContextChip) {
+  if (c.kind === 'image') return send({ type: 'file/open', path: c.absPath });
   if (c.kind === 'selection') send({ type: 'file/open', path: c.absPath, line: c.startLine, endLine: c.endLine });
   else if (c.kind === 'file' && !c.isFolder) send({ type: 'file/open', path: c.absPath });
   else if (c.kind === 'diagnostics' && c.path) send({ type: 'file/open', path: c.path });
@@ -63,9 +73,13 @@ export function ContextChips({ chips, tabId, readOnly }: Props) {
       {chips.map((c) => (
         <span key={c.id} className={`chip chip-${c.kind}`} title={tooltip(c)}>
           <button className="chip-main" onClick={() => openChip(c)} tabIndex={readOnly ? -1 : 0}>
-            <span className="chip-icon" aria-hidden>
-              {ICON[c.kind]}
-            </span>
+            {c.kind === 'image' && c.thumb ? (
+              <img className="chip-thumb" src={c.thumb} alt="" />
+            ) : (
+              <span className="chip-icon" aria-hidden>
+                {ICON[c.kind]}
+              </span>
+            )}
             <span className="chip-label">{label(c)}</span>
             {c.kind === 'selection' && c.text === undefined && (
               <span className="chip-flag" title="Over the size limit: path and line range only">

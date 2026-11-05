@@ -9,9 +9,13 @@ export interface CollectorWarning {
   warning?: string;
 }
 
-/** Workspace-relative path with forward slashes (absolute if outside the workspace). */
+/**
+ * Workspace-relative display path with forward slashes (absolute if outside the workspace).
+ * With several folders open it starts with the folder name, so same-named files stay distinct.
+ */
 export function relPath(uri: vscode.Uri): string {
-  const rel = vscode.workspace.asRelativePath(uri, false);
+  const multi = (vscode.workspace.workspaceFolders?.length ?? 0) > 1;
+  const rel = vscode.workspace.asRelativePath(uri, multi);
   return rel.replace(/\\/g, '/');
 }
 

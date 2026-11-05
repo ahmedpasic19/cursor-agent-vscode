@@ -174,3 +174,17 @@ Verified in Phase 6 on Windows (fixtures `worktree-ask`, `worktree-resume`):
 `switch-plan`, `switch-agent`, `hang-probe`) in a throwaway temp workspace. The read-only fixtures
 (`ask-simple`, `ask-no-partial`, `ask-resume`, `plan-mode`, `invalid-model`) are recorded with
 `npm run record -- <name> --cwd <dir> --prompt "..." -- <flags>`. Re-record after CLI updates.
+
+## Images ✅ (2026-11-05, CLI 2026.11.05)
+
+The CLI has no image input flag and the prompt is plain text on stdin. Passing an image **by path** works:
+`<image path="C:/…/probe.png" />` in `<attached_context>`, plus one line asking the agent to open it with
+its read tool, plus `--add-dir <image folder>` when the file is outside the workspace. The agent called
+`readToolCall` on the PNG (`totalLines: 0`, `fileSize`) and described its text and colours correctly.
+Fixture: `test/fixtures/image-read.*`. Pasted images are saved to
+`<globalStorage>/<workspace hash>/attachments/<chatId>/<sha1>.<ext>` and removed with the chat.
+
+## Multi-root ✅
+
+`--add-dir <path>` (repeatable) gives the agent extra roots. The extension passes every other workspace
+folder, so `@`-mentions from any folder can be read and edited. Checkpoints still cover only the cwd folder.

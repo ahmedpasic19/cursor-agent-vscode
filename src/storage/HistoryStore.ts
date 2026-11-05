@@ -112,6 +112,8 @@ export class HistoryStore {
     if (t) clearTimeout(t);
     this.timers.delete(id);
     rmSync(this.file(id), { force: true });
+    // Pasted images of this chat (src/context/Attachments.ts).
+    rmSync(join(this.chatsDir, '..', 'attachments', id), { recursive: true, force: true });
   }
 
   /** All saved chats, newest first. Empty chats (no messages) are skipped. */

@@ -52,7 +52,11 @@ export interface AddResult {
 export function addChip(list: ContextChip[], chip: ContextChip, maxLines: number): AddResult {
   switch (chip.kind) {
     case 'file': {
-      if (list.some((c) => c.kind === 'file' && samePath(c.path, chip.path))) return { chips: list, action: 'duplicate' };
+      if (list.some((c) => c.kind === 'file' && samePath(c.absPath, chip.absPath))) return { chips: list, action: 'duplicate' };
+      return { chips: [...list, chip], action: 'added' };
+    }
+    case 'image': {
+      if (list.some((c) => c.kind === 'image' && samePath(c.absPath, chip.absPath))) return { chips: list, action: 'duplicate' };
       return { chips: [...list, chip], action: 'added' };
     }
     case 'terminal': {
@@ -129,6 +133,8 @@ export function chipLabel(c: ContextChip): string {
       return c.isFolder ? `${c.path}/` : c.path;
     case 'terminal':
       return `Terminal: ${c.name}`;
+    case 'image':
+      return `Image: ${c.name}`;
     case 'diagnostics':
       return c.path ? `Problems: ${c.path}` : 'Problems: workspace';
   }

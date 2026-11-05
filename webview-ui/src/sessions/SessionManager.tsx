@@ -431,7 +431,7 @@ export function SessionManagerBody() {
         {visible.length === 0 && (
           <div className="pad muted empty-list">
             {rows.length === 0
-              ? 'No sessions yet. Start one with New session, or select code and press Ctrl+L.'
+              ? 'No sessions yet. Start one with New session, or select code and press Ctrl+I.'
               : activeOnly && !searching
                 ? 'No sessions are running.'
                 : 'No sessions match.'}

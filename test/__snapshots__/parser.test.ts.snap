@@ -823,6 +823,125 @@ exports[`CursorStreamParser on recorded fixtures > hang-probe > matches snapshot
 ]
 `;
 
+exports[`CursorStreamParser on recorded fixtures > image-read > matches snapshot 1`] = `
+[
+  {
+    "kind": "init",
+    "model": "Auto",
+  },
+  {
+    "at": 1793883930715,
+    "kind": "thinking",
+    "text": "I",
+  },
+  {
+    "at": 1793883930734,
+    "kind": "thinking",
+    "text": " will read the attached",
+  },
+  {
+    "at": 1793883930756,
+    "kind": "thinking",
+    "text": " image to identify the",
+  },
+  {
+    "at": 1793883930787,
+    "kind": "thinking",
+    "text": " text and the shape ",
+  },
+  {
+    "at": 1793883930818,
+    "kind": "thinking",
+    "text": "and",
+  },
+  {
+    "at": 1793883930836,
+    "kind": "thinking",
+    "text": " color on the left.",
+  },
+  {
+    "at": 1793883930837,
+    "kind": "thinkingDone",
+  },
+  {
+    "kind": "text",
+    "text": "I'll open the image and read what's on it.",
+  },
+  {
+    "argKeys": [
+      "path",
+    ],
+    "error": undefined,
+    "kind": "toolStarted",
+    "name": "read",
+    "resultKeys": undefined,
+    "uiKind": "read",
+  },
+  {
+    "argKeys": [
+      "path",
+    ],
+    "error": undefined,
+    "kind": "toolCompleted",
+    "name": "read",
+    "resultKeys": [
+      "dataBlobId",
+      "exceededLimit",
+      "fileSize",
+      "isEmpty",
+      "path",
+      "relatedCursorRulePaths",
+      "relatedCursorRules",
+      "totalLines",
+    ],
+    "uiKind": "read",
+  },
+  {
+    "at": 1793883934217,
+    "kind": "thinking",
+    "text": "I",
+  },
+  {
+    "at": 1793883934247,
+    "kind": "thinking",
+    "text": " need to read the attached",
+  },
+  {
+    "at": 1793883934264,
+    "kind": "thinking",
+    "text": " image to identify the",
+  },
+  {
+    "at": 1793883934295,
+    "kind": "thinking",
+    "text": " text and the shape ",
+  },
+  {
+    "at": 1793883934297,
+    "kind": "thinking",
+    "text": "and",
+  },
+  {
+    "at": 1793883934474,
+    "kind": "thinking",
+    "text": " color on the left.",
+  },
+  {
+    "at": 1793883934475,
+    "kind": "thinkingDone",
+  },
+  {
+    "kind": "text",
+    "text": "A red circle on the left, with the text "KIWI 4271" beside it.",
+  },
+  {
+    "hasUsage": true,
+    "isError": false,
+    "kind": "result",
+  },
+]
+`;
+
 exports[`CursorStreamParser on recorded fixtures > invalid-model > matches snapshot 1`] = `[]`;
 
 exports[`CursorStreamParser on recorded fixtures > plan-mode > matches snapshot 1`] = `

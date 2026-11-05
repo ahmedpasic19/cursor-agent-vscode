@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
 import type { Mode } from '../../../src/shared/events';
 import type { ContextChip, ModelOption } from '../../../src/shared/protocol';
 import { ArrowUpIcon, BranchIcon, FileIcon, PlusIcon, SlashIcon, StopIcon, WarnIcon } from '../sessions/icons';
 import { useStore } from '../state/store';
 import { send } from '../vscode';
+import { attachImages, IMAGE_TYPES, imageFiles, imageUris } from '../images';
 import { ContextChips } from './ContextChips';
 import { ModelSelect } from './ModelSelect';
 import { MODES, ModeSelect, nextMode } from './ModeSelect';
@@ -122,7 +123,7 @@ export function Composer(props: Props) {
   const pickMention = (i: number) => {
     const item = mentionOptions[i];
     if (!item || popup?.kind !== 'mention' || !tabId) return;
-    send({ type: 'mention/pick', tabId, path: item.path, isFolder: item.isFolder });
+    send({ type: 'mention/pick', tabId, path: item.path, isFolder: item.isFolder, root: item.root });
     const caret = ref.current?.selectionStart ?? text.length;
     const next = text.slice(0, popup.start) + text.slice(caret);
     setText(next.replace(/ {2,}/g, ' '));
@@ -191,8 +192,10 @@ export function Composer(props: Props) {
 
   // ---------- send / keys ----------
 
+  const hasImage = chips.some((c) => c.kind === 'image');
   const submit = () => {
-    const t = text.trim();
+    // An image alone is a valid message.
+    const t = text.trim() || (hasImage ? 'Take a look at the attached image.' : '');
     if (!t || disabled) return;
     if (t.startsWith('/') && runSlash(t)) return;
     if (running) return;
@@ -270,7 +273,39 @@ export function Composer(props: Props) {
     }, 0);
   };
 
-  const canSend = !!text.trim() && !disabled;
+  const canSend = (!!text.trim() || hasImage) && !disabled;
+
+  // ---------- images: paste, drop, picker ----------
+
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const addImages = (files: File[]) => {
+    if (!tabId || !files.length) return;
+    void attachImages(tabId, files).then((err) => err && showNotice('error', err));
+  };
+  const hasDropData = (dt: DataTransfer) =>
+    [...dt.types].some((t) => t === 'Files' || t === 'text/uri-list' || t === 'application/vnd.code.uri-list');
+  const dropProps = {
+    onDragOver: (e: DragEvent) => {
+      if (!hasDropData(e.dataTransfer)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      setDragOver(true);
+    },
+    onDragLeave: (e: DragEvent) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragOver(false);
+    },
+    onDrop: (e: DragEvent) => {
+      setDragOver(false);
+      if (!tabId || !hasDropData(e.dataTransfer)) return;
+      e.preventDefault();
+      const files = imageFiles(e.dataTransfer.files);
+      if (files.length) return addImages(files);
+      const uris = imageUris(e.dataTransfer);
+      if (uris.length) send({ type: 'image/addUris', tabId, uris });
+      else if (e.dataTransfer.files.length) showNotice('warning', 'Only images can be dropped here (PNG, JPEG, GIF, WebP, BMP). Use @ for other files.');
+    },
+  };
 
   return (
     <div className="composer">
@@ -296,7 +331,7 @@ export function Composer(props: Props) {
             {popup.kind === 'mention' &&
               mentionOptions.map((m, i) => (
                 <OptionRow
-                  key={m.path}
+                  key={`${m.root ?? ''}|${m.path}`}
                   icon={<FileIcon />}
                   label={
                     <>
@@ -304,7 +339,12 @@ export function Composer(props: Props) {
                       {m.isFolder ? '/' : ''}
                     </>
                   }
-                  trailing={<span className="option-hint">{m.path}</span>}
+                  trailing={
+                    <span className="option-hint">
+                      {m.folder && <span className="option-folder">{m.folder}</span>}
+                      {m.path}
+                    </span>
+                  }
                   active={i === active}
                   onHover={() => setActive(i)}
                   onPick={() => pickMention(i)}
@@ -317,11 +357,23 @@ export function Composer(props: Props) {
         </div>
       )}
       <div
-        className={`composer-box${disabled ? ' disabled' : ''}`}
+        className={`composer-box${disabled ? ' disabled' : ''}${dragOver ? ' drag-over' : ''}`}
         onMouseDown={(e) => {
           if (e.target === e.currentTarget) setTimeout(() => ref.current?.focus(), 0);
         }}
+        {...dropProps}
       >
+        <input
+          ref={fileInput}
+          type="file"
+          accept={IMAGE_TYPES.join(',')}
+          multiple
+          hidden
+          onChange={(e) => {
+            addImages(imageFiles(e.currentTarget.files));
+            e.currentTarget.value = '';
+          }}
+        />
         <ContextChips chips={chips} tabId={tabId} />
         <textarea
           ref={ref}
@@ -335,6 +387,13 @@ export function Composer(props: Props) {
           onClick={(e) => detectPopup(text, e.currentTarget.selectionStart)}
           onBlur={() => setTimeout(() => setPopup(undefined), 150)}
           onKeyDown={onKeyDown}
+          onPaste={(e) => {
+            // Screenshots (Win+Shift+S) and copied images arrive as clipboard files.
+            const files = imageFiles(e.clipboardData.files);
+            if (!files.length) return;
+            e.preventDefault();
+            addImages(files);
+          }}
           aria-label="Message"
         />
         <div className="composer-bar">
@@ -354,9 +413,18 @@ export function Composer(props: Props) {
                   }}
                 />
                 <OptionRow
+                  icon={<span className="glyph">🖼</span>}
+                  label="Attach image"
+                  description="Or paste a screenshot / drop an image"
+                  onPick={() => {
+                    setAttachOpen(false);
+                    fileInput.current?.click();
+                  }}
+                />
+                <OptionRow
                   icon={<span className="glyph">⌶</span>}
                   label="Add editor selection"
-                  description="Ctrl+L in the editor"
+                  description="Ctrl+I in the editor"
                   onPick={() => {
                     setAttachOpen(false);
                     send({ type: 'context/add', what: 'selection' });

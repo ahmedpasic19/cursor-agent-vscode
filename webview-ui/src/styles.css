@@ -1424,3 +1424,30 @@ body.vscode-high-contrast:not(.vscode-high-contrast-light) .shiki span {
     transition: none !important;
   }
 }
+
+/* ---------- images + multi-root mentions ---------- */
+.composer-box.drag-over {
+  border-color: var(--vscode-focusBorder, var(--ca-accent));
+  border-style: dashed;
+  background: color-mix(in srgb, var(--vscode-focusBorder, var(--ca-accent)) 8%, var(--vscode-input-background, var(--ca-surface)));
+}
+.chip-thumb {
+  width: 18px;
+  height: 18px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex: none;
+}
+.chips.readonly .chip-thumb {
+  width: 28px;
+  height: 28px;
+}
+.option-folder {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--ca-hover);
+  color: var(--ca-text);
+  font-size: 10.5px;
+}

@@ -13,6 +13,8 @@ export interface RunOptions {
   timeoutMs: number;
   /** Run in a named git worktree (`-w <name>`); the same name reuses the same worktree. */
   worktreeName?: string;
+  /** Extra workspace roots the agent may read and edit (`--add-dir`): other multi-root folders, image folders. */
+  addDirs?: string[];
 }
 
 export interface RunHandle {

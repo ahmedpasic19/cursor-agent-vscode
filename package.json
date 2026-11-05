@@ -107,13 +107,13 @@
       },
       {
         "command": "cursorAgent.addSelectionToChat",
-        "title": "Add Selection to Chat",
+        "title": "Add to Cursor",
         "category": "Cursor Agent",
-        "icon": "$(comment-discussion)"
+        "icon": "$(sparkle)"
       },
       {
         "command": "cursorAgent.addFileToChat",
-        "title": "Add File to Chat",
+        "title": "Add File to Cursor",
         "category": "Cursor Agent"
       },
       {
@@ -242,9 +242,16 @@
     },
     "keybindings": [
       {
+        "command": "cursorAgent.addSelectionToChat",
+        "key": "ctrl+i",
+        "mac": "cmd+i",
+        "when": "editorTextFocus && editorHasSelection"
+      },
+      {
         "command": "cursorAgent.focusChat",
         "key": "ctrl+i",
-        "mac": "cmd+i"
+        "mac": "cmd+i",
+        "when": "!(editorTextFocus && editorHasSelection)"
       },
       {
         "command": "cursorAgent.addSelectionToChat",
@@ -374,6 +381,11 @@
           "default": 0,
           "minimum": 0,
           "description": "Optional daily token budget. When set, Account & Usage draws bars for today and the last 7 days against it. 0 = show plain totals. These are tokens used through this extension, not your Cursor plan quota."
+        },
+        "cursorAgent.selectionCodeLens": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show an \"Add to Cursor (Ctrl+I)\" CodeLens above the editor selection."
         }
       }
     }

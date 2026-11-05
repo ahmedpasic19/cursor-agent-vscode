@@ -32,8 +32,13 @@ export function fuzzyScore(query: string, path: string): number | undefined {
 }
 
 export interface Candidate {
+  /** Path relative to `root`, forward slashes. */
   path: string;
   isFolder: boolean;
+  /** Absolute workspace folder the path is relative to (multi-root). */
+  root?: string;
+  /** Workspace folder name, set only when several folders are open. */
+  folder?: string;
 }
 
 export function fuzzyFilter(query: string, items: Candidate[], limit: number): Candidate[] {
@@ -53,11 +58,14 @@ export function fuzzyFilter(query: string, items: Candidate[], limit: number): C
 }
 
 /** Derive folder candidates from a file list. */
-export function withFolders(files: string[]): Candidate[] {
+export function withFolders(files: string[], tag: Pick<Candidate, 'root' | 'folder'> = {}): Candidate[] {
   const folders = new Set<string>();
   for (const f of files) {
     const parts = f.split('/');
     for (let i = 1; i < parts.length; i++) folders.add(parts.slice(0, i).join('/'));
   }
-  return [...[...folders].map((path) => ({ path, isFolder: true })), ...files.map((path) => ({ path, isFolder: false }))];
+  return [
+    ...[...folders].map((path) => ({ path, isFolder: true, ...tag })),
+    ...files.map((path) => ({ path, isFolder: false, ...tag })),
+  ];
 }
