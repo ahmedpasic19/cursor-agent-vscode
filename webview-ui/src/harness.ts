@@ -251,25 +251,12 @@ function replay(sc: Scenario, text: string, mode: Mode, attached: ContextChip[] 
         post({ type: 'tab/activated', tabId: id });
         break;
       }
-      case 'tab/close':
-        post({ type: 'tab/closed', tabId: msg.tabId });
-        break;
       case 'tab/rename':
         if (msg.tabId === TAB) post({ type: 'tab/updated', tab: { ...tabMeta(), title: msg.title } });
         else post({ type: 'notice', level: 'info', text: `(harness) renamed to ${msg.title}` });
         break;
-      case 'history/request':
-        post({
-          type: 'history/list',
-          items: [
-            { id: TAB, title: tabMeta().title, createdAt: Date.now() - 60e3, updatedAt: Date.now() - 30e3, messageCount: 1, preview: current.prompt, open: true },
-            { id: 'h1', title: 'Fix booking race condition', createdAt: Date.now() - 86e6, updatedAt: Date.now() - 7200e3, messageCount: 6, preview: 'The booking API double-books when two requests…', open: false },
-            { id: 'h2', title: 'Add CSV export', createdAt: Date.now() - 3 * 86e6, updatedAt: Date.now() - 2 * 86e6, messageCount: 3, preview: 'Add an export button to the reports page', open: false },
-          ],
-        });
-        break;
-      case 'history/open':
-        post({ type: 'notice', level: 'info', text: `(harness) would open chat ${msg.id}` });
+      case 'sessions/show':
+        post({ type: 'notice', level: 'info', text: '(harness) would reveal the Session Manager — open sessions-harness.html' });
         break;
       case 'message/send': {
         const attached = chips.filter((c) => msg.chipIds.includes(c.id));
@@ -408,7 +395,7 @@ function renderPanel() {
     panel.append(b);
   }
   const tabsBtn = document.createElement('button');
-  tabsBtn.textContent = 'Add 2 background tabs (1 running)';
+  tabsBtn.textContent = 'Add 2 background sessions (1 running)';
   tabsBtn.onclick = () => {
     const mk = (id: string, title: string, running: boolean) =>
       post({ type: 'tab/created', tab: { id, title, mode: 'agent', cwd: current.cwd, running, chips: [], transcript: [] } });

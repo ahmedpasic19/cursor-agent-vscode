@@ -45,7 +45,11 @@ recorded this way (prompt written, stdin closed). Non-ASCII in the prompt was no
   `<id> - <label>` lines; the current default is suffixed ` (current, default)`. ~270 models.
   Parse with `/^(\S+) - (.+?)( \(current(, default)?\))?$/`. Some labels contain zero-width chars — trim them.
 - `cursor-agent --version` → `2026.11.05-86047df`. Use it as the capabilities cache key.
-- `about` shows tier, default model, shell.
+- `about` shows tier, default model, shell. `about --format json` (✅ 2026.11.05) →
+  `{cliVersion, latestStatus: "up_to_date", latestVersion, model: "Auto", subscriptionTier: "Pro", userEmail,
+  osPlatform, osArch, shell, terminalProgram, agentHost, lastRequestId}`. Used for Account & Usage (plan tier).
+  It reports no quota or usage numbers.
+- `logout` signs out and clears stored auth.
 
 ## 5. Event stream (`stream-json`) ✅
 

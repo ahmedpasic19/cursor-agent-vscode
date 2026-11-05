@@ -176,6 +176,10 @@ cursor-agent-vscode/
 
 ### 5.1 Sidebar and tabs
 
+> **Superseded in v0.8 (Claude Code-style layout, see README):** the in-webview TabBar and HistoryView are gone. The chat shows one
+> session in the secondary sidebar; the Session Manager in the activity-bar view lists, filters, groups and switches
+> sessions. Parallel runs, queueing and the overlap warning below are unchanged ("tab" now means a loaded session).
+
 - Contribute an activity-bar container with one `WebviewView`, "Cursor Agent". Use `retainContextWhenHidden: true` so streams are not lost when the panel is hidden.
 - The TabBar sits at the top of the webview. It has:
   - **New tab (+)**, also available as the `cursorAgent.newChat` command.

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cursor Agent — sessions harness</title>
+    <style>
+      /* Approximation of VS Code Dark Modern tokens so the webview renders outside VS Code. */
+      :root {
+        --vscode-font-family: system-ui, 'Segoe UI', sans-serif;
+        --vscode-font-size: 13px;
+        --vscode-editor-font-family: Consolas, 'Courier New', monospace;
+        --vscode-foreground: #cccccc;
+        --vscode-descriptionForeground: #9d9d9d;
+        --vscode-sideBar-background: #181818;
+        --vscode-editor-background: #1f1f1f;
+        --vscode-input-background: #313131;
+        --vscode-input-foreground: #cccccc;
+        --vscode-input-border: #3c3c3c;
+        --vscode-input-placeholderForeground: #989898;
+        --vscode-focusBorder: #0078d4;
+        --vscode-panel-border: #2b2b2b;
+        --vscode-textLink-foreground: #4daafc;
+        --vscode-textCodeBlock-background: #2b2b2b;
+        --vscode-button-background: #0078d4;
+        --vscode-button-foreground: #ffffff;
+        --vscode-button-hoverBackground: #026ec1;
+        --vscode-button-secondaryBackground: #313131;
+        --vscode-button-secondaryForeground: #cccccc;
+        --vscode-button-secondaryHoverBackground: #3c3c3c;
+        --vscode-dropdown-background: #313131;
+        --vscode-dropdown-foreground: #cccccc;
+        --vscode-dropdown-border: #3c3c3c;
+        --vscode-badge-background: #616161;
+        --vscode-badge-foreground: #f8f8f8;
+        --vscode-list-hoverBackground: #2a2d2e;
+        --vscode-toolbar-hoverBackground: #5a5d5e50;
+        --vscode-errorForeground: #f85149;
+        --vscode-inputValidation-errorBorder: #be1100;
+        --vscode-inputValidation-errorBackground: #5a1d1d;
+        --vscode-progressBar-background: #0078d4;
+        --vscode-charts-green: #89d185;
+        --vscode-textBlockQuote-border: #616161;
+        --vscode-terminal-background: #181818;
+        --vscode-sideBarSectionHeader-background: #181818;
+        --vscode-sideBarSectionHeader-foreground: #cccccc;
+        --vscode-sideBarSectionHeader-border: #2b2b2b;
+        --vscode-list-inactiveSelectionBackground: #37373d;
+        --vscode-list-dropBackground: #383b3d;
+        --vscode-menu-background: #1f1f1f;
+        --vscode-menu-border: #454545;
+        --vscode-menu-selectionBackground: #0078d4;
+        --vscode-widget-shadow: rgba(0, 0, 0, 0.36);
+        --vscode-editorWarning-foreground: #cca700;
+        --vscode-notificationsInfoIcon-foreground: #3794ff;
+        --vscode-icon-foreground: #cccccc;
+      }
+      body { margin: 0; display: flex; height: 100vh; background: #111; color: #ccc; font: 13px system-ui, sans-serif; }
+      #panel { width: 240px; padding: 10px; overflow-y: auto; border-right: 1px solid #333; flex: none; }
+      #panel h3 { font-size: 11px; text-transform: uppercase; color: #888; margin: 14px 0 4px; letter-spacing: .05em; }
+      #panel button { display: block; width: 100%; text-align: left; background: none; color: #ccc; border: 1px solid transparent; padding: 3px 6px; cursor: pointer; border-radius: 3px; font: inherit; }
+      #panel button:hover { background: #2a2d2e; }
+      #panel button.active { border-color: #0078d4; background: #04395e; }
+      #panel label { display: block; margin-top: 8px; font-size: 12px; }
+      #panel .hint { font-size: 11px; color: #888; margin-top: 10px; line-height: 1.4; }
+      #frame { width: 360px; height: 100vh; border-right: 1px solid #333; flex: none; }
+    </style>
+  </head>
+  <body class="vscode-dark">
+    <div id="panel"></div>
+    <div id="frame"><div id="root" style="height: 100%"></div></div>
+    <script type="module" src="./src/sessions/harness.ts"></script>
+  </body>
+</html>

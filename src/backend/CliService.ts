@@ -1,8 +1,9 @@
 import { tmpdir } from 'node:os';
 import type { CliStatus } from '../shared/protocol';
 import { CliBackend, type Logger } from './CliBackend';
-import { type CliCapabilities, type ModelInfo, probeAuth, probeCapabilities, probeModels, probeVersion } from './cliCapabilities';
+import { type AboutInfo, type CliCapabilities, type ModelInfo, probeAbout, probeAuth, probeCapabilities, probeModels, probeVersion } from './cliCapabilities';
 import { type CliInfo, locateCli } from './cliLocator';
+import { runCliCapture } from './processUtil';
 
 /** Locates and probes the CLI; caches capabilities per version. */
 export class CliService {
@@ -86,6 +87,37 @@ export class CliService {
     this.log(`[cli] ${models.length} models`);
     if (models.length) this.modelCache = { version, models };
     return models;
+  }
+
+  /** Failures are cached too, so a CLI without `about` isn't spawned on every account refresh. */
+  private aboutCache?: { version: string; info?: AboutInfo };
+  private aboutPending?: Promise<AboutInfo | undefined>;
+
+  /** `about --format json` (tier, default model), cached per CLI version unless forced. */
+  async about(force = false): Promise<AboutInfo | undefined> {
+    if (this.refreshing) await this.refreshing;
+    if (!this.cli || this.status.state !== 'ready') return undefined;
+    const version = this.status.version ?? '';
+    if (!force && this.aboutCache?.version === version) return this.aboutCache.info;
+    if (this.aboutPending) return this.aboutPending;
+    const cli = this.cli;
+    this.aboutPending = probeAbout(cli, tmpdir())
+      .then((info) => {
+        this.aboutCache = { version, info };
+        if (!info) this.log('[cli] about --format json failed; plan tier unavailable');
+        return info;
+      })
+      .finally(() => (this.aboutPending = undefined));
+    return this.aboutPending;
+  }
+
+  /** `cursor-agent logout`, then re-probe. Returns an error message on failure. */
+  async logout(): Promise<string | undefined> {
+    if (!this.cli) return this.status.message ?? 'cursor-agent CLI is not available.';
+    const r = await runCliCapture(this.cli, ['logout'], tmpdir(), 30000);
+    this.aboutCache = undefined;
+    await this.refresh();
+    return r.code === 0 ? undefined : (r.error ?? (r.stderr || r.stdout).trim().slice(0, 300)) || `logout exited ${r.code}`;
   }
 
   /** How to launch `cursor-agent <args>` in a terminal (shellPath + shellArgs, no quoting needed). */

@@ -3,7 +3,6 @@ import type { Mode } from '../../../src/shared/events';
 import type {
   CliStatus,
   ContextChip,
-  HistoryItem,
   HostMessage,
   MentionItem,
   ModelOption,
@@ -38,11 +37,7 @@ interface Store {
   notice?: { id: number; level: 'info' | 'warning' | 'error'; text: string };
   /** Tabs with activity the user hasn't seen (finished or streamed while inactive). */
   unread: Record<string, boolean>;
-  history: HistoryItem[];
-  historyOpen: boolean;
-  /** Webview-initiated tab switch (optimistic; host is told separately). */
   activate(tabId: string): void;
-  setHistoryOpen(open: boolean): void;
   handle(msg: HostMessage): void;
   dismissNotice(): void;
   /** Local-only notice (e.g. from a slash command). */
@@ -66,17 +61,11 @@ export const useStore = create<Store>((set, get) => ({
   models: [],
   mention: { requestId: -1, items: [] },
   unread: {},
-  history: [],
-  historyOpen: false,
 
   activate(tabId) {
     const { unread } = get();
     const { [tabId]: _seen, ...rest } = unread;
-    set({ activeTabId: tabId, unread: rest, historyOpen: false });
-  },
-
-  setHistoryOpen(open) {
-    set({ historyOpen: open });
+    set({ activeTabId: tabId, unread: rest });
   },
 
   dismissNotice() {
@@ -177,12 +166,6 @@ export const useStore = create<Store>((set, get) => ({
         set({ tabs: { ...s.tabs, [msg.tabId]: { ...tab, transcript } }, tick: s.tick + 1 });
         break;
       }
-      case 'history/list':
-        set({ history: msg.items });
-        break;
-      case 'history/show':
-        set({ historyOpen: true });
-        break;
       case 'composer/focus':
         set({ focusRequest: s.focusRequest + 1 });
         break;

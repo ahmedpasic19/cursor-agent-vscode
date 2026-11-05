@@ -63,6 +63,39 @@ export async function probeAuth(cli: CliInfo, cwd: string): Promise<AuthResult> 
   }
 }
 
+/** `about --format json` (docs/CLI_NOTES.md §4). Unknown or missing fields are left out. */
+export interface AboutInfo {
+  tier?: string;
+  model?: string;
+  email?: string;
+  cliVersion?: string;
+  latestVersion?: string;
+  /** `up_to_date` or another status string from the CLI. */
+  latestStatus?: string;
+}
+
+export function parseAbout(stdout: string): AboutInfo | undefined {
+  try {
+    const j = JSON.parse(stdout) as Record<string, unknown>;
+    const str = (k: string) => (typeof j[k] === 'string' && (j[k] as string).trim() ? (j[k] as string).trim() : undefined);
+    return {
+      tier: str('subscriptionTier'),
+      model: str('model'),
+      email: str('userEmail'),
+      cliVersion: str('cliVersion'),
+      latestVersion: str('latestVersion'),
+      latestStatus: str('latestStatus'),
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+export async function probeAbout(cli: CliInfo, cwd: string): Promise<AboutInfo | undefined> {
+  const r = await runCliCapture(cli, ['about', '--format', 'json'], cwd, 30000);
+  return r.code === 0 ? parseAbout(r.stdout) : undefined;
+}
+
 export async function probeModels(cli: CliInfo, cwd: string): Promise<ModelInfo[]> {
   const r = await runCliCapture(cli, ['models'], cwd, 30000);
   return r.code === 0 ? parseModels(r.stdout) : [];

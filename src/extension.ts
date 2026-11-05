@@ -10,11 +10,23 @@ import { fileChip } from './context/ContextCollector';
 import { FileIndex } from './context/FileIndex';
 import type { Mode } from './shared/events';
 import type { HostMessage, WebviewMessage } from './shared/protocol';
+import { SessionIndex } from './session/SessionIndex';
 import { SessionManager } from './session/SessionManager';
 import { StatusBar } from './statusBar';
+import { GroupStore } from './storage/GroupStore';
 import { HistoryStore } from './storage/HistoryStore';
+import { totalTokens, UsageLedger, usageOfEvents } from './storage/UsageLedger';
 import { PINNED_SDK_VERSION, SdkService } from './sdk/SdkService';
-import { WebviewBridge } from './webview/WebviewBridge';
+import { VIEW_IDS, WebviewBridge } from './webview/WebviewBridge';
+
+/** Idle background sessions kept in memory; older ones reload from history when opened. */
+const MAX_LOADED_SESSIONS = 8;
+
+/** Extensions can contribute to the secondary sidebar from VS Code 1.106. */
+function supportsSecondarySidebar(): boolean {
+  const [major = 0, minor = 0] = vscode.version.split('.').map(Number);
+  return major > 1 || (major === 1 && minor >= 106);
+}
 
 let manager: SessionManager | undefined;
 let history: HistoryStore | undefined;
@@ -46,11 +58,25 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     vscode.workspace.workspaceFile?.scheme === 'file'
       ? vscode.workspace.workspaceFile.fsPath
       : (vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? 'no-workspace');
-  const store = new HistoryStore(vscode.Uri.joinPath(context.globalStorageUri, workspaceHash(workspaceKey)).fsPath, {
+  const workspaceDir = vscode.Uri.joinPath(context.globalStorageUri, workspaceHash(workspaceKey)).fsPath;
+  const store = new HistoryStore(workspaceDir, {
     limit: () => cfg().get<number>('historyLimit', 200),
     log,
   });
   history = store;
+  const groups = new GroupStore(workspaceDir, log);
+  const ledger = new UsageLedger(vscode.Uri.joinPath(context.globalStorageUri, 'usage.jsonl').fsPath, log);
+  const index = new SessionIndex();
+
+  // Sessions/account pushes are coalesced; these run before the manager exists (startup restore).
+  let sessionsTimer: NodeJS.Timeout | undefined;
+  let accountTimer: NodeJS.Timeout | undefined;
+  const scheduleSessions = () => {
+    sessionsTimer ??= setTimeout(() => pushSessions(), 250);
+  };
+  const scheduleAccount = () => {
+    accountTimer ??= setTimeout(() => void pushAccount(), 100);
+  };
 
   const cli = new CliService(
     () => cfg().get<string>('cliPath', ''),
@@ -63,10 +89,21 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
       if (useSdk()) return;
       statusBar.setCli(status);
       bridge.post({ type: 'cli/status', cli: { ...status, backend: 'cli' } });
+      scheduleAccount();
     },
   );
 
-  const bridge = new WebviewBridge(context.extensionUri, (msg) => handle(msg), log);
+  // Chat on the right (secondary sidebar), sessions + account on the left (activity bar).
+  const secondary = supportsSecondarySidebar();
+  void vscode.commands.executeCommand('setContext', 'cursorAgent:noSecondarySidebar', !secondary);
+  const bridge = new WebviewBridge(
+    secondary ? [VIEW_IDS.chat, VIEW_IDS.chatFallback] : [VIEW_IDS.chatFallback, VIEW_IDS.chat],
+    'index',
+    context.extensionUri,
+    (msg) => handle(msg),
+    log,
+  );
+  const sessionsBridge = new WebviewBridge([VIEW_IDS.sessions], 'sessions', context.extensionUri, (msg) => handleSessions(msg), log);
 
   // ---- SDK backend (Phase 7): optional, selected by cursorAgent.backend ----
   const SDK_KEY = 'cursorAgent.sdkApiKey';
@@ -82,6 +119,7 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
       if (useSdk()) {
         statusBar.setCli(s);
         bridge.post({ type: 'cli/status', cli: s });
+        scheduleAccount();
       }
     },
   });
@@ -148,8 +186,18 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     getCwd,
     post,
     getCheckpoints: (root) => changes.sourceFor(root),
-    onTabChanged: (tab, urgent) => store.schedule(tab, urgent),
-    onTabsChanged: () => saveOpenState(),
+    onTabChanged: (tab, urgent) => {
+      store.schedule(tab, urgent);
+      scheduleSessions();
+    },
+    onTabsChanged: () => {
+      saveOpenState();
+      scheduleSessions();
+      scheduleAccount();
+    },
+    onRunFinished: (tab, run) => {
+      if (ledger.record(usageOfEvents(run.events), { chatId: tab.id, model: run.model ?? tab.model })) scheduleAccount();
+    },
   });
   manager = mgr;
 
@@ -167,13 +215,223 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
       mgr.activeTabId = mgr.getTab(state.activeTabId ?? '')?.id ?? mgr.tabs[0]!.id;
       log(`[history] restored ${mgr.tabs.length} tab(s)`);
     }
-    store.prune(new Set(mgr.tabs.map((t) => t.id)));
+    groups.forget(store.prune(new Set(mgr.tabs.map((t) => t.id))));
+    index.seed(store.list(new Set(mgr.tabs.map((t) => t.id))));
+    mgr.unloadIdle(MAX_LOADED_SESSIONS);
   }
 
-  const sendHistory = () => {
-    const open = new Set(mgr.tabs.map((t) => t.id));
-    bridge.post({ type: 'history/list', items: store.list(open) });
+  // ---- Session Manager and Account & Usage (left view) ----
+  const pushSessions = () => {
+    if (sessionsTimer) clearTimeout(sessionsTimer);
+    sessionsTimer = undefined;
+    for (const t of mgr.tabs) index.update(t);
+    const live = new Map(mgr.tabs.map((t) => [t.id, t]));
+    sessionsBridge.post({
+      type: 'sessions/state',
+      rows: index.rows(live, mgr.unread, (id) => groups.groupOf(id)),
+      groups: groups.groups,
+      activeId: mgr.activeTabId,
+    });
   };
+
+  const pushAccount = async () => {
+    if (accountTimer) clearTimeout(accountTimer);
+    accountTimer = undefined;
+    const status = activeStatus();
+    const sdkMode = useSdk();
+    const about = sdkMode ? undefined : await cli.about();
+    const active = mgr.activeTab;
+    sessionsBridge.post({
+      type: 'account/state',
+      account: {
+        backend: sdkMode ? 'sdk' : 'cli',
+        state: status.state,
+        email: status.email ?? about?.email,
+        tier: about?.tier,
+        model: about?.model ?? (cfg().get<string>('defaultModel', '') || undefined),
+        version: status.version,
+        latest:
+          about?.latestStatus === 'up_to_date'
+            ? 'up to date'
+            : about?.latestVersion && about.latestVersion !== status.version
+              ? `update available: ${about.latestVersion}`
+              : undefined,
+        message: status.message,
+      },
+      usage: {
+        session: active ? ledger.chatTotals(active.id) : undefined,
+        today: ledger.today(),
+        week: ledger.week(),
+        dailyBudget: Math.max(0, cfg().get<number>('usage.dailyTokenBudget', 0)),
+      },
+    });
+  };
+
+  const revealChat = async () => {
+    await bridge.reveal();
+    bridge.post({ type: 'composer/focus' });
+  };
+
+  const openSession = (id: string): boolean => {
+    if (!mgr.getTab(id)) {
+      const data = store.load(id);
+      if (!data) return false;
+      mgr.restoreTab(data, true);
+    }
+    mgr.activate(id, true);
+    mgr.unloadIdle(MAX_LOADED_SESSIONS);
+    scheduleSessions();
+    return true;
+  };
+
+  const deleteSession = async (id: string) => {
+    const title = mgr.getTab(id)?.title ?? store.load(id)?.title;
+    const ok =
+      (await vscode.window.showWarningMessage(
+        `Delete “${title ?? 'this chat'}”?`,
+        { modal: true, detail: 'The chat and its history are removed. Files the agent changed stay as they are. This cannot be undone.' },
+        'Delete',
+      )) === 'Delete';
+    if (!ok) return;
+    if (mgr.getTab(id)) mgr.closeTab(id);
+    store.delete(id);
+    index.remove(id);
+    groups.forget([id]);
+    pushSessions();
+  };
+
+  const newGroup = async () => {
+    const name = await vscode.window.showInputBox({
+      title: 'New group',
+      prompt: 'Name for the session group',
+      validateInput: (v) => (v.trim() ? undefined : 'Enter a name.'),
+    });
+    if (!name?.trim()) return;
+    groups.create(name);
+    pushSessions();
+  };
+
+  const fmt = (n: number) => n.toLocaleString('en-US');
+  const showAccountDetails = async () => {
+    const status = activeStatus();
+    const about = useSdk() ? undefined : await cli.about(true);
+    const newer = about?.latestVersion && about.latestVersion !== status.version ? ` (latest ${about.latestVersion})` : '';
+    const items: vscode.QuickPickItem[] = [
+      { label: 'Account', kind: vscode.QuickPickItemKind.Separator },
+      { label: 'Backend', description: useSdk() ? 'SDK (API key, billed by usage)' : 'CLI (Cursor subscription)' },
+      { label: 'Email', description: status.email ?? about?.email ?? '—' },
+      { label: 'Plan', description: about?.tier ?? '—' },
+      { label: 'Default model', description: about?.model ?? '—' },
+      { label: 'CLI version', description: `${status.version ?? '—'}${newer}` },
+      { label: 'Tokens used through this extension, last 7 days', kind: vscode.QuickPickItemKind.Separator },
+    ];
+    const models = ledger.byModel();
+    if (!models.length) items.push({ label: 'No runs with token usage yet' });
+    for (const m of models) {
+      const t = m.totals;
+      items.push({
+        label: m.model,
+        description: `${fmt(totalTokens(t))} tokens · ${t.runs} run${t.runs === 1 ? '' : 's'}`,
+        detail: `input ${fmt(t.input)} · output ${fmt(t.output)} · cache read ${fmt(t.cacheRead)} · cache write ${fmt(t.cacheWrite)}`,
+      });
+    }
+    const dashboard = '$(link-external) Open Cursor dashboard';
+    items.push(
+      { label: '', kind: vscode.QuickPickItemKind.Separator },
+      { label: dashboard, detail: 'Plan limits and billing are shown there.' },
+    );
+    const pick = await vscode.window.showQuickPick(items, { title: 'Cursor account & usage', matchOnDescription: true });
+    if (pick?.label === dashboard) void vscode.env.openExternal(vscode.Uri.parse('https://cursor.com/dashboard'));
+  };
+
+  const logout = async () => {
+    const ok =
+      (await vscode.window.showWarningMessage('Log out of the Cursor CLI?', { modal: true, detail: 'Runs stop working until you log in again.' }, 'Log out')) ===
+      'Log out';
+    if (!ok) return;
+    const err = await cli.logout();
+    if (err) void vscode.window.showErrorMessage(`Cursor Agent: logout failed — ${err}`);
+  };
+
+  const showSessions = async () => {
+    await sessionsBridge.reveal();
+    sessionsBridge.post({ type: 'sessions/focusSearch' });
+  };
+
+  function handleSessions(msg: WebviewMessage): void {
+    switch (msg.type) {
+      case 'ready':
+        pushSessions();
+        void pushAccount();
+        sessionsBridge.flushPending();
+        break;
+      case 'session/open':
+        if (!openSession(msg.id)) {
+          sessionsBridge.post({ type: 'notice', level: 'error', text: 'That chat could not be loaded.' });
+          index.remove(msg.id);
+          pushSessions();
+          break;
+        }
+        void revealChat();
+        break;
+      case 'tab/new':
+        mgr.newTab(true);
+        scheduleSessions();
+        void revealChat();
+        break;
+      case 'tab/rename': {
+        const loaded = mgr.getTab(msg.tabId);
+        if (loaded) loaded.rename(msg.title);
+        else {
+          const data = store.load(msg.tabId);
+          if (data) {
+            mgr.restoreTab(data).rename(msg.title);
+            mgr.unloadIdle(MAX_LOADED_SESSIONS);
+          }
+        }
+        scheduleSessions();
+        break;
+      }
+      case 'session/delete':
+        void deleteSession(msg.id);
+        break;
+      case 'session/move':
+        groups.move(msg.id, msg.groupId);
+        pushSessions();
+        break;
+      case 'group/create':
+        groups.create(msg.name);
+        pushSessions();
+        break;
+      case 'group/rename':
+        groups.rename(msg.id, msg.name);
+        pushSessions();
+        break;
+      case 'group/delete':
+        groups.delete(msg.id);
+        pushSessions();
+        break;
+      case 'group/toggle':
+        groups.setCollapsed(msg.id, msg.collapsed);
+        pushSessions();
+        break;
+      case 'account/details':
+        void showAccountDetails();
+        break;
+      case 'auth/logout':
+        void logout();
+        break;
+      case 'auth/login':
+      case 'cli/refresh':
+      case 'settings/open':
+      case 'backend/switch':
+      case 'sdk/install':
+      case 'sdk/setKey':
+      case 'log/show':
+        handle(msg);
+        break;
+    }
+  }
 
   const changes: ChangesController = new ChangesController(context.globalStorageUri, mgr, cfg, log, (tab, run) => {
     if (run.changes) post({ type: 'changes/updated', tabId: tab.id, runId: run.id, changes: run.changes });
@@ -231,45 +489,14 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
       case 'tab/new':
         mgr.newTab(true);
         break;
-      case 'tab/close':
-        mgr.closeTab(msg.tabId);
-        break;
-      case 'tab/activate':
-        mgr.activate(msg.tabId);
-        break;
       case 'tab/rename':
         mgr.renameTab(msg.tabId, msg.title);
         break;
+      case 'sessions/show':
+        void showSessions();
+        break;
       case 'run/resume':
         mgr.resume(msg.tabId);
-        break;
-      case 'history/request':
-        sendHistory();
-        break;
-      case 'history/open': {
-        if (mgr.getTab(msg.id)) {
-          mgr.activate(msg.id, true);
-          break;
-        }
-        const data = store.load(msg.id);
-        if (!data) {
-          bridge.post({ type: 'notice', level: 'error', text: 'That chat could not be loaded.' });
-          break;
-        }
-        mgr.restoreTab(data, true);
-        mgr.activate(msg.id, true);
-        break;
-      }
-      case 'history/delete':
-        void (async () => {
-          const ok =
-            (await vscode.window.showWarningMessage('Delete this chat from history?', { modal: true, detail: 'This cannot be undone.' }, 'Delete')) ===
-            'Delete';
-          if (!ok) return;
-          if (mgr.getTab(msg.id)) mgr.closeTab(msg.id);
-          store.delete(msg.id);
-          sendHistory();
-        })();
         break;
       case 'message/send':
         mgr.send(msg.tabId, msg.text, msg.mode, msg.model, msg.chipIds);
@@ -387,17 +614,22 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     statusBar,
     vscode.workspace.registerTextDocumentContentProvider(BeforeContentProvider.scheme, before),
     vscode.workspace.registerTextDocumentContentProvider(DiffProvider.scheme, new DiffProvider((root) => changes.service(root))),
-    vscode.window.registerWebviewViewProvider(WebviewBridge.viewId, bridge, {
-      webviewOptions: { retainContextWhenHidden: true },
-    }),
+    ...[VIEW_IDS.chat, VIEW_IDS.chatFallback].map((id) =>
+      vscode.window.registerWebviewViewProvider(id, bridge, { webviewOptions: { retainContextWhenHidden: true } }),
+    ),
+    vscode.window.registerWebviewViewProvider(VIEW_IDS.sessions, sessionsBridge, { webviewOptions: { retainContextWhenHidden: true } }),
     vscode.commands.registerCommand('cursorAgent.newChat', async () => {
       await bridge.reveal();
       mgr.newTab(true);
       bridge.post({ type: 'composer/focus' });
     }),
-    vscode.commands.registerCommand('cursorAgent.showHistory', async () => {
-      await bridge.reveal();
-      bridge.post({ type: 'history/show' });
+    vscode.commands.registerCommand('cursorAgent.showHistory', showSessions),
+    vscode.commands.registerCommand('cursorAgent.focusSessions', () => sessionsBridge.reveal()),
+    vscode.commands.registerCommand('cursorAgent.newGroup', newGroup),
+    vscode.commands.registerCommand('cursorAgent.refreshAccount', () => {
+      void refreshBackend()
+        .then(() => (useSdk() ? undefined : cli.about(true)))
+        .then(() => pushAccount());
     }),
     vscode.commands.registerCommand('cursorAgent.focusChat', async () => {
       await bridge.reveal();
@@ -416,6 +648,7 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     }),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('cursorAgent.cliPath')) void cli.refresh();
+      if (e.affectsConfiguration('cursorAgent.usage.dailyTokenBudget')) scheduleAccount();
       if (e.affectsConfiguration('cursorAgent.backend') || e.affectsConfiguration('cursorAgent.sdk.nodePath')) {
         log(`[backend] switched to ${useSdk() ? 'sdk' : 'cli'}`);
         void refreshBackend().then((s) => {
@@ -435,6 +668,12 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     fileIndex,
     code,
     { dispose: () => mgr.stopAll() },
+    {
+      dispose: () => {
+        if (sessionsTimer) clearTimeout(sessionsTimer);
+        if (accountTimer) clearTimeout(accountTimer);
+      },
+    },
   );
 
   registerAddToChat(context, {

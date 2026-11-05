@@ -143,8 +143,69 @@ export const HistoryItemSchema = z.object({
   /** First user message, for search and preview. */
   preview: z.string(),
   open: z.boolean(),
+  /** Status of the last run on disk (a run saved as running/queued was interrupted by a restart). */
+  lastStatus: RunRecordSchema.shape.status.optional(),
 });
 export type HistoryItem = z.infer<typeof HistoryItemSchema>;
+
+// ---------- Sessions view (left sidebar) ----------
+
+export const SessionStatusSchema = z.enum(['idle', 'running', 'queued', 'interrupted', 'error']);
+export type SessionStatus = z.infer<typeof SessionStatusSchema>;
+
+/** One row of the Session Manager: a saved chat merged with its live state. */
+export const SessionRowSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+  preview: z.string(),
+  messageCount: z.number(),
+  status: SessionStatusSchema,
+  /** A run finished (or streamed) while this session was not the one shown in the chat. */
+  unread: z.boolean(),
+  groupId: z.string().optional(),
+});
+export type SessionRow = z.infer<typeof SessionRowSchema>;
+
+export const SessionGroupSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  collapsed: z.boolean(),
+});
+export type SessionGroup = z.infer<typeof SessionGroupSchema>;
+
+/** Account facts from `cursor-agent status` / `about --format json`, or the SDK backend. */
+export const AccountInfoSchema = z.object({
+  backend: z.enum(['cli', 'sdk']),
+  state: CliStatusSchema.shape.state,
+  email: z.string().optional(),
+  tier: z.string().optional(),
+  model: z.string().optional(),
+  version: z.string().optional(),
+  /** e.g. "up to date", "update available: 2026.11.06-…" */
+  latest: z.string().optional(),
+  message: z.string().optional(),
+});
+export type AccountInfo = z.infer<typeof AccountInfoSchema>;
+
+export const UsageTotalsSchema = z.object({
+  input: z.number(),
+  output: z.number(),
+  cacheRead: z.number(),
+  cacheWrite: z.number(),
+  runs: z.number(),
+});
+export type UsageTotals = z.infer<typeof UsageTotalsSchema>;
+
+export const UsageSummarySchema = z.object({
+  session: UsageTotalsSchema.optional(),
+  today: UsageTotalsSchema,
+  week: UsageTotalsSchema,
+  /** cursorAgent.usage.dailyTokenBudget; 0 = no bars. */
+  dailyBudget: z.number(),
+});
+export type UsageSummary = z.infer<typeof UsageSummarySchema>;
 
 export const MentionItemSchema = z.object({ path: z.string(), isFolder: z.boolean() });
 export type MentionItem = z.infer<typeof MentionItemSchema>;
@@ -165,8 +226,16 @@ export const HostMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('tab/closed'), tabId: z.string() }),
   z.object({ type: z.literal('tab/activated'), tabId: z.string() }),
   z.object({ type: z.literal('run/warnings'), tabId: z.string(), runId: z.string(), warnings: z.array(z.string()) }),
-  z.object({ type: z.literal('history/list'), items: z.array(HistoryItemSchema) }),
-  z.object({ type: z.literal('history/show') }),
+  // Sessions view only:
+  z.object({
+    type: z.literal('sessions/state'),
+    rows: z.array(SessionRowSchema),
+    groups: z.array(SessionGroupSchema),
+    activeId: z.string().optional(),
+  }),
+  z.object({ type: z.literal('account/state'), account: AccountInfoSchema, usage: UsageSummarySchema }),
+  /** Focus the Session Manager search box. */
+  z.object({ type: z.literal('sessions/focusSearch') }),
   z.object({ type: z.literal('chips/updated'), tabId: z.string(), chips: z.array(ContextChipSchema) }),
   z.object({ type: z.literal('mention/results'), requestId: z.number(), items: z.array(MentionItemSchema) }),
   z.object({ type: z.literal('models/list'), models: z.array(ModelOptionSchema), source: z.enum(['cli', 'setting']) }),
@@ -192,12 +261,19 @@ export type HostMessage = z.infer<typeof HostMessageSchema>;
 export const WebviewMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ready') }),
   z.object({ type: z.literal('tab/new') }),
-  z.object({ type: z.literal('tab/close'), tabId: z.string() }),
-  z.object({ type: z.literal('tab/activate'), tabId: z.string() }),
   z.object({ type: z.literal('tab/rename'), tabId: z.string(), title: z.string().min(1).max(200) }),
-  z.object({ type: z.literal('history/request') }),
-  z.object({ type: z.literal('history/open'), id: z.string() }),
-  z.object({ type: z.literal('history/delete'), id: z.string() }),
+  /** Chat header clock / `/history`: reveal the Session Manager. */
+  z.object({ type: z.literal('sessions/show') }),
+  // Sessions view:
+  z.object({ type: z.literal('session/open'), id: z.string() }),
+  z.object({ type: z.literal('session/delete'), id: z.string() }),
+  z.object({ type: z.literal('session/move'), id: z.string(), groupId: z.string().optional() }),
+  z.object({ type: z.literal('group/create'), name: z.string().min(1).max(100) }),
+  z.object({ type: z.literal('group/rename'), id: z.string(), name: z.string().min(1).max(100) }),
+  z.object({ type: z.literal('group/delete'), id: z.string() }),
+  z.object({ type: z.literal('group/toggle'), id: z.string(), collapsed: z.boolean() }),
+  z.object({ type: z.literal('account/details') }),
+  z.object({ type: z.literal('auth/logout') }),
   /** Resume an interrupted run: send "continue" with --resume. */
   z.object({ type: z.literal('run/resume'), tabId: z.string() }),
   z.object({

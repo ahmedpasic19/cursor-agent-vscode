@@ -124,7 +124,9 @@ export class HistoryStore {
       if (!data) continue;
       const users = data.transcript.filter((t) => t.role === 'user');
       if (!users.length) continue;
+      const lastRun = [...data.transcript].reverse().find((t) => t.role === 'run');
       items.push({
+        lastStatus: lastRun?.role === 'run' ? lastRun.status : undefined,
         id,
         title: data.title,
         createdAt: data.createdAt,

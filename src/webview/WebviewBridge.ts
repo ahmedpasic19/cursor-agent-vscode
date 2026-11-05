@@ -1,21 +1,36 @@
 import * as vscode from 'vscode';
 import { type HostMessage, type WebviewMessage, WebviewMessageSchema } from '../shared/protocol';
 
-/** Sidebar WebviewView: strict CSP, typed messaging, buffering until the view is ready. */
+/** Webview bundles in dist/webview: `index` (chat) and `sessions` (Session Manager). */
+export type WebviewEntry = 'index' | 'sessions';
+
+/** View ids. The chat lives in the secondary sidebar, or in the activity-bar container on VS Code < 1.106. */
+export const VIEW_IDS = {
+  chat: 'cursorAgent.chat',
+  chatFallback: 'cursorAgent.chatSidebar',
+  sessions: 'cursorAgent.sessions',
+} as const;
+
+/** WebviewView host: strict CSP, typed messaging, buffering until the view is ready. */
 export class WebviewBridge implements vscode.WebviewViewProvider {
-  static readonly viewId = 'cursorAgent.chat';
   private view?: vscode.WebviewView;
   private ready = false;
   private pending: HostMessage[] = [];
 
   constructor(
+    /** Ids this provider is registered for; reveal() focuses the first one that resolved, else the first. */
+    readonly viewIds: readonly string[],
+    private readonly entry: WebviewEntry,
     private readonly extensionUri: vscode.Uri,
     private readonly onMessage: (msg: WebviewMessage) => void,
     private readonly log: (line: string) => void,
   ) {}
 
+  private resolvedId?: string;
+
   resolveWebviewView(view: vscode.WebviewView): void {
     this.view = view;
+    this.resolvedId = view.viewType;
     this.ready = false;
     const root = vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview');
     view.webview.options = { enableScripts: true, localResourceRoots: [root] };
@@ -45,7 +60,7 @@ export class WebviewBridge implements vscode.WebviewViewProvider {
   post(msg: HostMessage): void {
     if (!this.view || !this.ready) {
       // Incremental messages are superseded by the state/full sent on `ready`.
-      if (msg.type === 'composer/focus' || msg.type === 'notice') this.pending.push(msg);
+      if (msg.type === 'composer/focus' || msg.type === 'notice' || msg.type === 'sessions/focusSearch') this.pending.push(msg);
       return;
     }
     void this.view.webview.postMessage(msg);
@@ -59,13 +74,13 @@ export class WebviewBridge implements vscode.WebviewViewProvider {
   }
 
   async reveal(): Promise<void> {
-    await vscode.commands.executeCommand(`${WebviewBridge.viewId}.focus`);
+    await vscode.commands.executeCommand(`${this.resolvedId ?? this.viewIds[0]}.focus`);
   }
 
   private html(webview: vscode.Webview, root: vscode.Uri): string {
     const nonce = makeNonce();
-    const js = webview.asWebviewUri(vscode.Uri.joinPath(root, 'index.js'));
-    const css = webview.asWebviewUri(vscode.Uri.joinPath(root, 'index.css'));
+    const js = webview.asWebviewUri(vscode.Uri.joinPath(root, `${this.entry}.js`));
+    const css = webview.asWebviewUri(vscode.Uri.joinPath(root, `${this.entry}.css`));
     const csp = [
       "default-src 'none'",
       `img-src ${webview.cspSource} data:`,

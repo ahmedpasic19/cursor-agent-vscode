@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Mode } from '../../src/shared/events';
+import { ChatHeader } from './components/ChatHeader';
 import { CliBanner } from './components/CliBanner';
 import { Composer } from './components/Composer';
 import { ContextChips } from './components/ContextChips';
-import { HistoryView } from './components/HistoryView';
 import { Notice } from './components/Notice';
 import { RunMessage } from './components/RunMessage';
-import { TabBar } from './components/TabBar';
 import { TabContext } from './components/tools/util';
 import { useStore } from './state/store';
 import { send } from './vscode';
@@ -15,7 +14,7 @@ import { send } from './vscode';
 const composerModes = new Map<string, Mode>();
 
 export function App() {
-  const { tabs, activeTabId, defaultMode, focusRequest, cli, models, historyOpen } = useStore();
+  const { tabs, activeTabId, defaultMode, focusRequest, cli, models } = useStore();
   useStore((s) => s.tick); // re-render on streamed events
   const tab = activeTabId ? tabs[activeTabId] : undefined;
   const [mode, setMode] = useState<Mode>(defaultMode);
@@ -35,24 +34,13 @@ export function App() {
     if (tab) setMode(tab.meta.mode);
   }, [tab?.meta.mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Webview-wide shortcuts: Alt+N new tab, Alt+W close, Alt+[ / Alt+] switch tabs.
+  // Alt+N: new session. Switching sessions happens in the Session Manager (left sidebar).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!e.altKey || e.ctrlKey || e.metaKey) return;
-      const st = useStore.getState();
-      const order = st.tabOrder;
-      const i = order.indexOf(st.activeTabId ?? '');
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
         send({ type: 'tab/new' });
-      } else if ((e.key === 'w' || e.key === 'W') && st.activeTabId) {
-        e.preventDefault();
-        send({ type: 'tab/close', tabId: st.activeTabId });
-      } else if ((e.key === '[' || e.key === ']') && order.length > 1 && i >= 0) {
-        e.preventDefault();
-        const next = order[(i + (e.key === ']' ? 1 : order.length - 1)) % order.length]!;
-        st.activate(next);
-        send({ type: 'tab/activate', tabId: next });
       }
     };
     window.addEventListener('keydown', onKey);
@@ -71,6 +59,7 @@ export function App() {
   };
 
   const running = !!tab?.meta.running;
+  const queued = !!tab?.transcript.some((x) => x.role === 'run' && x.status === 'queued');
   const lastSent = useMemo(() => {
     const t = tab?.transcript ?? [];
     for (let i = t.length - 1; i >= 0; i--) {
@@ -101,9 +90,9 @@ export function App() {
   return (
     <TabContext.Provider value={ctx}>
       <div className="app">
-        <TabBar />
+        <ChatHeader tab={tab?.meta} queued={queued} />
         <CliBanner cli={cli} />
-        {tab?.meta.worktree && !historyOpen && (
+        {tab?.meta.worktree && (
           <div className="worktree-banner">
             <span title={tab.meta.worktreePath}>
               ⎇ Worktree{tab.meta.worktreePath ? `: ${tab.meta.worktreePath.split(/[\\/]/).slice(-2).join('/')}` : ' (created on the next run)'}
@@ -115,11 +104,10 @@ export function App() {
             )}
           </div>
         )}
-        {historyOpen && <HistoryView />}
-        <div className="messages" ref={listRef} onScroll={onScroll} hidden={historyOpen}>
+        <div className="messages" ref={listRef} onScroll={onScroll}>
           {!tab || tab.transcript.length === 0 ? (
             <div className="empty">
-              <p>No messages in this chat yet.</p>
+              <p className="empty-hero">What should we build?</p>
               <p className="muted">
                 Select code and press <kbd>Ctrl+L</kbd> to add it, type <kbd>@</kbd> to attach files, or just type below.
               </p>
@@ -133,7 +121,7 @@ export function App() {
                   <tr><td><kbd>Shift+Tab</kbd></td><td>cycle Agent · Ask · Plan</td></tr>
                   <tr><td><kbd>Esc</kbd></td><td>stop the run</td></tr>
                   <tr><td><kbd>↑</kbd> in an empty box</td><td>recall your last message</td></tr>
-                  <tr><td><kbd>Alt+N</kbd> · <kbd>Alt+W</kbd> · <kbd>Alt+[</kbd> <kbd>Alt+]</kbd></td><td>new / close / switch tabs</td></tr>
+                  <tr><td><kbd>Alt+N</kbd></td><td>new session (switch sessions in the Cursor sidebar)</td></tr>
                   <tr><td><kbd>Ctrl+I</kbd> · <kbd>Ctrl+L</kbd></td><td>focus chat · add selection</td></tr>
                 </tbody>
               </table>

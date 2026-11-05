@@ -2,7 +2,7 @@
   "name": "cursor-agent-vscode",
   "displayName": "Cursor Agent",
   "description": "Cursor's agent in a VS Code sidebar chat (personal use).",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "publisher": "local",
   "private": true,
   "license": "UNLICENSED",
@@ -21,6 +21,8 @@
     "dist/sdk-worker.cjs",
     "dist/webview/index.js",
     "dist/webview/index.css",
+    "dist/webview/sessions.js",
+    "dist/webview/sessions.css",
     "media/icon.svg",
     "README.md"
   ],
@@ -32,8 +34,16 @@
       "activitybar": [
         {
           "id": "cursorAgent",
-          "title": "Cursor Agent",
+          "title": "Cursor",
           "icon": "media/icon.svg"
+        }
+      ],
+      "secondarySidebar": [
+        {
+          "id": "cursorAgentChat",
+          "title": "Cursor",
+          "icon": "media/icon.svg",
+          "when": "!cursorAgent:noSecondarySidebar"
         }
       ]
     },
@@ -41,8 +51,22 @@
       "cursorAgent": [
         {
           "type": "webview",
+          "id": "cursorAgent.sessions",
+          "name": "Sessions"
+        },
+        {
+          "type": "webview",
+          "id": "cursorAgent.chatSidebar",
+          "name": "Chat",
+          "when": "cursorAgent:noSecondarySidebar"
+        }
+      ],
+      "cursorAgentChat": [
+        {
+          "type": "webview",
           "id": "cursorAgent.chat",
-          "name": "Chat"
+          "name": "Cursor",
+          "when": "!cursorAgent:noSecondarySidebar"
         }
       ]
     },
@@ -101,7 +125,7 @@
       },
       {
         "command": "cursorAgent.showHistory",
-        "title": "Show Chat History",
+        "title": "Show Sessions",
         "category": "Cursor Agent",
         "icon": "$(history)"
       },
@@ -119,19 +143,41 @@
         "command": "cursorAgent.clearSdkApiKey",
         "title": "Clear SDK API Key",
         "category": "Cursor Agent"
+      },
+      {
+        "command": "cursorAgent.focusSessions",
+        "title": "Focus Session Manager",
+        "category": "Cursor Agent"
+      },
+      {
+        "command": "cursorAgent.newGroup",
+        "title": "New Session Group",
+        "category": "Cursor Agent",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "cursorAgent.refreshAccount",
+        "title": "Refresh Account & Usage",
+        "category": "Cursor Agent",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
       "view/title": [
         {
           "command": "cursorAgent.newChat",
-          "when": "view == cursorAgent.chat",
+          "when": "view == cursorAgent.sessions",
           "group": "navigation@1"
         },
         {
-          "command": "cursorAgent.showHistory",
-          "when": "view == cursorAgent.chat",
+          "command": "cursorAgent.newGroup",
+          "when": "view == cursorAgent.sessions",
           "group": "navigation@2"
+        },
+        {
+          "command": "cursorAgent.refreshAccount",
+          "when": "view == cursorAgent.sessions",
+          "group": "navigation@3"
         }
       ],
       "editor/context": [
@@ -309,6 +355,12 @@
           "default": 200,
           "minimum": 10,
           "description": "Maximum saved chats per workspace; the oldest closed chats are deleted first."
+        },
+        "cursorAgent.usage.dailyTokenBudget": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "description": "Optional daily token budget. When set, Account & Usage draws bars for today and the last 7 days against it. 0 = show plain totals. These are tokens used through this extension, not your Cursor plan quota."
         }
       }
     }
@@ -316,7 +368,7 @@
   "scripts": {
     "build": "npm run build:ext && npm run build:webview",
     "build:ext": "node esbuild.mjs",
-    "build:webview": "vite build --config webview-ui/vite.config.ts",
+    "build:webview": "vite build --config webview-ui/vite.config.ts && vite build --config webview-ui/vite.sessions.config.ts",
     "watch:ext": "node esbuild.mjs --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p webview-ui/tsconfig.json --noEmit",
     "test": "vitest run",

@@ -34,6 +34,8 @@ export interface ManagerDeps {
   onTabChanged?(tab: TabSession, urgent: boolean): void;
   /** The open-tab list or active tab changed. */
   onTabsChanged?(): void;
+  /** A run finished (after its record is final). */
+  onRunFinished?(tab: TabSession, run: RunRecord): void;
 }
 
 interface ActiveAgentRun {
@@ -47,6 +49,10 @@ interface ActiveAgentRun {
 export class SessionManager implements OverlapTracker {
   readonly tabs: TabSession[] = [];
   activeTabId?: string;
+  /** Sessions whose run finished while another session was shown in the chat. */
+  readonly unread = new Set<string>();
+  /** When each loaded tab was last shown, for unloading the least recently used. */
+  private readonly lastShown = new Map<string, number>();
   private readonly queue: TabSession[] = [];
   private runningCount = 0;
   private readonly agentRuns = new Map<string, ActiveAgentRun>();
@@ -61,6 +67,8 @@ export class SessionManager implements OverlapTracker {
       this.changed(tab, false);
     },
     onRunFinished: (tab, run, outcome) => {
+      if (tab.id !== this.activeTabId) this.unread.add(tab.id);
+      this.deps.onRunFinished?.(tab, run);
       this.deps.post({ type: 'run/finished', tabId: tab.id, runId: run.id, status: run.status, outcome });
       this.changed(tab, true);
     },
@@ -108,6 +116,7 @@ export class SessionManager implements OverlapTracker {
     const tab = new TabSession(this.deps.getCwd(), this.deps.getDefaultMode(), this.deps.getDefaultModel(), this.tabEvents);
     this.tabs.push(tab);
     this.activeTabId = tab.id;
+    this.lastShown.set(tab.id, Date.now());
     if (announce) {
       this.deps.post({ type: 'tab/created', tab: tab.snapshot() });
       this.deps.post({ type: 'tab/activated', tabId: tab.id });
@@ -132,6 +141,8 @@ export class SessionManager implements OverlapTracker {
   activate(tabId: string, announce = false): void {
     if (!this.getTab(tabId) || this.activeTabId === tabId) return;
     this.activeTabId = tabId;
+    this.unread.delete(tabId);
+    this.lastShown.set(tabId, Date.now());
     if (announce) this.deps.post({ type: 'tab/activated', tabId });
     this.deps.onTabsChanged?.();
   }
@@ -146,6 +157,8 @@ export class SessionManager implements OverlapTracker {
     tab.stop();
     this.changed(tab, true);
     this.tabs.splice(i, 1);
+    this.unread.delete(tabId);
+    this.lastShown.delete(tabId);
     this.deps.post({ type: 'tab/closed', tabId });
     if (this.activeTabId === tabId) {
       const next = this.tabs[Math.min(i, this.tabs.length - 1)] ?? this.newTab(true);
@@ -153,6 +166,27 @@ export class SessionManager implements OverlapTracker {
       this.deps.post({ type: 'tab/activated', tabId: next.id });
     }
     this.deps.onTabsChanged?.();
+  }
+
+  /**
+   * Drops idle background tabs from memory, least recently shown first, keeping at most `max`
+   * loaded. Their chats stay in history and reload when opened again. Returns unloaded ids.
+   */
+  unloadIdle(max: number): string[] {
+    const idle = this.tabs
+      .filter((t) => t.id !== this.activeTabId && !t.running && !this.queue.includes(t))
+      .sort((a, b) => (this.lastShown.get(a.id) ?? 0) - (this.lastShown.get(b.id) ?? 0));
+    const out: string[] = [];
+    while (this.tabs.length > Math.max(1, max) && idle.length) {
+      const tab = idle.shift()!;
+      this.changed(tab, true);
+      this.tabs.splice(this.tabs.indexOf(tab), 1);
+      this.lastShown.delete(tab.id);
+      this.deps.post({ type: 'tab/closed', tabId: tab.id });
+      out.push(tab.id);
+    }
+    if (out.length) this.deps.onTabsChanged?.();
+    return out;
   }
 
   renameTab(tabId: string, title: string): void {

@@ -44,7 +44,7 @@ const SLASH: SlashCommand[] = [
   { name: 'clear', hint: 'Start a new session in this tab' },
   { name: 'model', args: '[id]', hint: 'Pick or set the model' },
   { name: 'mode', args: '[agent|ask|plan]', hint: 'Set or cycle the mode' },
-  { name: 'history', hint: 'Search past chats' },
+  { name: 'history', hint: 'Show sessions' },
 ];
 
 type Popup =
@@ -170,8 +170,7 @@ export function Composer(props: Props) {
         return true;
       }
       case 'history':
-        send({ type: 'history/request' });
-        useStore.getState().setHistoryOpen(true);
+        send({ type: 'sessions/show' });
         clear();
         return true;
       default:
