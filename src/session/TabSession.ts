@@ -1,3 +1,4 @@
+import { realpathSync } from 'node:fs';
 import type { AgentBackend, RunHandle } from '../backend/AgentBackend';
 import { chipLabel, expandChipTokens } from '../shared/inlineChips';
 import type { CheckpointService } from '../checkpoints/CheckpointService';
@@ -73,11 +74,31 @@ export interface PersistedTab {
   worktreePath?: string;
 }
 
+const realRoots = new Map<string, string>();
+function realRoot(root: string): string {
+  let r = realRoots.get(root);
+  if (r === undefined) {
+    try {
+      r = realpathSync.native(root);
+    } catch {
+      r = root;
+    }
+    realRoots.set(root, r);
+  }
+  return r;
+}
+
 /** Case-insensitive on Windows, forward slashes, relative to the tab root. */
 export function pathKey(root: string, p: string): string {
   let rel = p.replace(/\\/g, '/');
-  const r = root.replace(/\\/g, '/').replace(/\/$/, '');
-  if (rel.toLowerCase().startsWith(r.toLowerCase() + '/')) rel = rel.slice(r.length + 1);
+  // The agent may report paths under the resolved root (e.g. macOS /var → /private/var).
+  for (const candidate of [root, realRoot(root)]) {
+    const r = candidate.replace(/\\/g, '/').replace(/\/$/, '');
+    if (rel.toLowerCase().startsWith(r.toLowerCase() + '/')) {
+      rel = rel.slice(r.length + 1);
+      break;
+    }
+  }
   rel = rel.replace(/^\.\//, '');
   return process.platform === 'win32' ? rel.toLowerCase() : rel;
 }
