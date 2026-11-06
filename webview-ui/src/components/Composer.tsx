@@ -6,6 +6,7 @@ import { useStore } from '../state/store';
 import { send } from '../vscode';
 import { attachImages, IMAGE_TYPES, imageFiles, imageUris } from '../images';
 import { chipIdsIn, chipToken, CHIP_TOKEN_RE } from '../../../src/shared/inlineChips';
+import { ActiveEditorBar } from './ActiveEditorBar';
 import { ImageThumbs, openChip } from './ContextChips';
 import { getCaret, render, serialize, setCaret } from './richInput';
 import { ModelSelect } from './ModelSelect';
@@ -82,6 +83,7 @@ export function Composer(props: Props) {
   const [modelOpen, setModelOpen] = useState(0);
   const [attachOpen, setAttachOpen] = useState(false);
   const closeAttach = useCallback(() => setAttachOpen(false), []);
+  const activeEditor = useStore((s) => s.activeEditor);
   const openHistory = useStore((s) => s.openHistory);
   const openHelp = useStore((s) => s.openHelp);
   const ref = useRef<HTMLDivElement>(null);
@@ -454,6 +456,7 @@ export function Composer(props: Props) {
             e.currentTarget.value = '';
           }}
         />
+        <ActiveEditorBar active={activeEditor} chips={chips} disabled={disabled} />
         <ImageThumbs images={images} tabId={tabId} />
         <div
           ref={ref}

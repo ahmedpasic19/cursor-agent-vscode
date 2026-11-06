@@ -5,6 +5,7 @@ import { CodeActions } from './codeActions';
 import { ChangesController } from './checkpoints/ChangesController';
 import { workspaceHash } from './checkpoints/CheckpointService';
 import { DiffProvider } from './checkpoints/DiffProvider';
+import { ActiveEditorWatcher } from './context/ActiveEditorWatcher';
 import { registerAddToChat } from './context/commands';
 import { fileChip } from './context/ContextCollector';
 import { imageChipForPath, MAX_IMAGE_BYTES, saveImage } from './context/Attachments';
@@ -109,6 +110,12 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     log,
   );
   const sessionsBridge = new WebviewBridge([VIEW_IDS.sessions], 'sessions', context.extensionUri, (msg) => handleSessions(msg), log);
+
+  // What the user is looking at (active file + selection), mirrored above the composer.
+  const activeEditor = new ActiveEditorWatcher(
+    (active) => bridge.post({ type: 'editor/active', active }),
+    () => cfg().get<boolean>('showActiveEditor', true),
+  );
 
   // ---- SDK backend (Phase 7): optional, selected by cursorAgent.backend ----
   const SDK_KEY = 'cursorAgent.sdkApiKey';
@@ -561,6 +568,9 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
       case 'ready':
         sendFullState();
         pushSessions();
+        // The panel reloaded: it has no active-editor state yet.
+        activeEditor.invalidate();
+        activeEditor.push();
         break;
       case 'session/open':
         if (!openSession(msg.id)) {
@@ -571,9 +581,16 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
         }
         bridge.post({ type: 'composer/focus' });
         break;
-      case 'context/add':
-        void vscode.commands.executeCommand(msg.what === 'selection' ? 'cursorAgent.addSelectionToChat' : 'cursorAgent.addProblemsToChat');
+      case 'context/add': {
+        const command =
+          msg.what === 'selection'
+            ? 'cursorAgent.addSelectionToChat'
+            : msg.what === 'activeFile'
+              ? 'cursorAgent.addFileToChat'
+              : 'cursorAgent.addProblemsToChat';
+        void vscode.commands.executeCommand(command);
         break;
+      }
       case 'tab/new':
         mgr.newTab(true);
         break;
@@ -778,6 +795,7 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('cursorAgent.cliPath')) void cli.refresh();
       if (e.affectsConfiguration('cursorAgent.usage.dailyTokenBudget')) scheduleAccount();
+      if (e.affectsConfiguration('cursorAgent.showActiveEditor')) activeEditor.push();
       if (e.affectsConfiguration('cursorAgent.cli.useApiKey')) {
         void applyCliAuth().then(() => cli.refresh());
         scheduleAccount();
@@ -798,6 +816,7 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     }),
     vscode.commands.registerCommand('cursorAgent.installSdk', installSdk),
     fileIndex,
+    activeEditor,
     code,
     { dispose: () => mgr.stopAll() },
     {

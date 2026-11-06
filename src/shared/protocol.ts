@@ -254,6 +254,18 @@ export const PlanUsageStateSchema = z.union([
 ]);
 export type PlanUsageState = z.infer<typeof PlanUsageStateSchema>;
 
+/** The file (and selection) the user is looking at right now; mirrored above the composer. */
+export const ActiveEditorSchema = z.object({
+  path: z.string(),
+  absPath: z.string(),
+  languageId: z.string().optional(),
+  startLine: z.number().optional(),
+  endLine: z.number().optional(),
+  selectedLines: z.number().optional(),
+  selections: z.number().optional(),
+});
+export type ActiveEditor = z.infer<typeof ActiveEditorSchema>;
+
 export const MentionItemSchema = z.object({
   path: z.string(),
   isFolder: z.boolean(),
@@ -295,6 +307,8 @@ export const HostMessageSchema = z.discriminatedUnion('type', [
   /** Open the chat panel's history dropdown (clock button, /history, Cursor: Show Sessions). */
   z.object({ type: z.literal('history/open') }),
   z.object({ type: z.literal('chips/updated'), tabId: z.string(), chips: z.array(ContextChipSchema) }),
+  /** The file/selection the user is looking at; `active` absent = no text editor focused. */
+  z.object({ type: z.literal('editor/active'), active: ActiveEditorSchema.optional() }),
   z.object({ type: z.literal('mention/results'), requestId: z.number(), items: z.array(MentionItemSchema) }),
   z.object({ type: z.literal('models/list'), models: z.array(ModelOptionSchema), source: z.enum(['cli', 'setting']) }),
   /** Transient message shown in the panel (e.g. "chip over the size limit"). */
@@ -393,8 +407,8 @@ export const WebviewMessageSchema = z.discriminatedUnion('type', [
   /** Per-tab "run in a git worktree" toggle (CLI -w). */
   z.object({ type: z.literal('tab/setWorktree'), tabId: z.string(), enabled: z.boolean() }),
   z.object({ type: z.literal('worktree/open'), path: z.string() }),
-  /** Composer "+" menu: run the matching "Add … to Chat" command. */
-  z.object({ type: z.literal('context/add'), what: z.enum(['selection', 'problems']) }),
+  /** Composer "+" menu and the active-editor pills: run the matching "Add … to Chat" command. */
+  z.object({ type: z.literal('context/add'), what: z.enum(['selection', 'problems', 'activeFile']) }),
   z.object({ type: z.literal('sdk/install') }),
   z.object({ type: z.literal('sdk/setKey') }),
   z.object({ type: z.literal('backend/switch'), backend: z.enum(['cli', 'sdk']) }),

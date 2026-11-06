@@ -11,7 +11,7 @@
 import { addChip, chipId } from '../../src/context/chips';
 import { fuzzyFilter, withFolders } from '../../src/context/fuzzy';
 import { CursorStreamParser } from '../../src/parser/cursorStreamJson';
-import type { ChangedFile, CliStatus, ContextChip, HostMessage, RunChanges, RunRecord, SessionRow, WebviewMessage } from '../../src/shared/protocol';
+import type { ActiveEditor, ChangedFile, CliStatus, ContextChip, HostMessage, RunChanges, RunRecord, SessionRow, WebviewMessage } from '../../src/shared/protocol';
 import { buildPrompt } from '../../src/session/promptBuilder';
 
 type Mode = RunRecord['mode'];
@@ -118,6 +118,16 @@ const MODELS = [
   { id: 'gpt-5.6-sol-high', label: 'GPT-5.6 Sol 1M High' },
 ];
 const MATH_LINES = Array.from({ length: 40 }, (_, i) => `line ${i + 1} of math.ts`);
+/** Pretend the user is looking at these lines in the editor (the "looking at" pills). */
+const ACTIVE_EDITOR: ActiveEditor = {
+  path: 'src/math.ts',
+  absPath: 'C:/ws/web/src/math.ts',
+  languageId: 'typescript',
+  startLine: 12,
+  endLine: 14,
+  selections: 1,
+  selectedLines: 3,
+};
 
 function setChips(next: ContextChip[]) {
   chips = next;
@@ -159,6 +169,7 @@ function reset() {
   runOrder.length = 0;
   post({ type: 'state/full', tabs: [{ ...tabMeta(), chips, transcript: [] }], activeTabId: TAB, cli, settings: { defaultMode: 'agent' } });
   post({ type: 'models/list', models: MODELS, source: 'cli' });
+  post({ type: 'editor/active', active: ACTIVE_EDITOR });
 }
 
 function replay(sc: Scenario, text: string, mode: Mode, attached: ContextChip[] = []) {
@@ -273,7 +284,11 @@ function replay(sc: Scenario, text: string, mode: Mode, attached: ContextChip[] 
         post({ type: 'notice', level: 'info', text: `(harness) would open session ${msg.id}` });
         break;
       case 'context/add':
-        post({ type: 'notice', level: 'info', text: `(harness) would add ${msg.what} to the chat` });
+        // The "looking at" pills: adding behaves like the real Ctrl+I / Add file commands.
+        if (msg.what === 'selection') addFake(selection(ACTIVE_EDITOR.path, ACTIVE_EDITOR.startLine!, ACTIVE_EDITOR.endLine!));
+        else if (msg.what === 'activeFile')
+          addFake({ id: chipId(), kind: 'file', path: ACTIVE_EDITOR.path, absPath: ACTIVE_EDITOR.absPath, isFolder: false });
+        else post({ type: 'notice', level: 'info', text: `(harness) would add ${msg.what} to the chat` });
         break;
       case 'tab/new': {
         const id = `tab_extra_${++n}`;

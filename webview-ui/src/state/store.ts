@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Mode } from '../../../src/shared/events';
 import type {
+  ActiveEditor,
   CliStatus,
   ContextChip,
   HostMessage,
@@ -35,6 +36,8 @@ interface Store {
   models: ModelOption[];
   modelsSource?: 'cli' | 'setting';
   mention: { requestId: number; items: MentionItem[] };
+  /** File + selection the user is looking at in the editor; undefined = no text editor focused. */
+  activeEditor?: ActiveEditor;
   notice?: { id: number; level: 'info' | 'warning' | 'error'; text: string };
   /** Tabs with activity the user hasn't seen (finished or streamed while inactive). */
   unread: Record<string, boolean>;
@@ -199,6 +202,9 @@ export const useStore = create<Store>((set, get) => ({
         set({ tabs: { ...s.tabs, [msg.tabId]: { ...tab, chips: msg.chips } } });
         break;
       }
+      case 'editor/active':
+        set({ activeEditor: msg.active });
+        break;
       case 'mention/results':
         // Ignore stale responses.
         if (msg.requestId >= s.mention.requestId) set({ mention: { requestId: msg.requestId, items: msg.items } });

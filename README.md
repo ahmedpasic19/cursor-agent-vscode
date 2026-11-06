@@ -15,6 +15,8 @@ Context:
 
 - **Ctrl+I** (Cmd+I) with a selection adds it to the chat; with nothing selected it focuses the chat. An
   *Add to Cursor (Ctrl+I)* CodeLens shows above the selection (`cursorAgent.selectionCodeLens`). Ctrl+L in the editor is left to VS Code.
+- **Looking at:** the composer shows the file you have open and, while you have something selected, how many lines —
+  click either pill to attach it, exactly as Ctrl+I would. A pill that is already attached shows a ✓ instead.
 - **Images:** paste a screenshot (Ctrl+V), drop an image, or *+ → Attach image*. Images are saved per chat and sent by
   path; the agent opens them with its read tool.
 - **Multi-root:** `@` searches every workspace folder; the other folders are passed to the agent with `--add-dir`.

@@ -629,6 +629,11 @@
           "minimum": 0,
           "description": "Optional daily token budget. When set, Account & Usage draws bars for today and the last 7 days against it. 0 = show plain totals. These are tokens used through this extension, not your Cursor plan quota."
         },
+        "cursorAgent.showActiveEditor": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the file and selection you are looking at above the composer, as pills that attach them to the chat when clicked."
+        },
         "cursorAgent.selectionCodeLens": {
           "type": "boolean",
           "default": true,
