@@ -51,6 +51,32 @@ body.vscode-high-contrast {
   --ca-shadow: none;
 }
 
+/* Mode accents for the composer (scoped via data-mode on .composer-box). */
+[data-mode='agent'] {
+  --ca-mode: #d97757;
+  --ca-mode-ink: #1a1008;
+}
+[data-mode='ask'] {
+  --ca-mode: #86a96b;
+  --ca-mode-ink: #0d1408;
+}
+[data-mode='plan'] {
+  --ca-mode: #a77ab8;
+  --ca-mode-ink: #150d18;
+}
+body.vscode-light [data-mode='agent'] {
+  --ca-mode: #b85c3c;
+  --ca-mode-ink: #fff;
+}
+body.vscode-light [data-mode='ask'] {
+  --ca-mode: #5f8347;
+  --ca-mode-ink: #fff;
+}
+body.vscode-light [data-mode='plan'] {
+  --ca-mode: #86589a;
+  --ca-mode-ink: #fff;
+}
+
 /* ---------- mascot ---------- */
 .mascot {
   display: block;

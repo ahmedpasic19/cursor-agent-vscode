@@ -1319,16 +1319,44 @@ body.vscode-high-contrast:not(.vscode-high-contrast-light) .shiki span {
 .composer-box {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--ca-border-strong);
+  --ca-mode-rest: color-mix(in srgb, var(--ca-mode) 32%, var(--ca-border-strong));
+  --ca-mode-lit: var(--ca-mode);
+  --ca-mode-glow: color-mix(in srgb, var(--ca-mode) 22%, transparent);
+  border: 1px solid var(--ca-mode-rest);
   border-radius: var(--ca-radius-lg);
   background: var(--vscode-input-background, var(--ca-surface));
   padding: 8px 8px 6px 10px;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
   cursor: text;
 }
 .composer-box:focus-within {
-  border-color: color-mix(in srgb, var(--vscode-foreground) 45%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--vscode-foreground) 10%, transparent);
+  border-color: var(--ca-mode-lit);
+  box-shadow: 0 0 0 1px var(--ca-mode-glow);
+}
+body.vscode-high-contrast .composer-box {
+  --ca-mode-rest: var(--ca-border-strong);
+}
+body.vscode-high-contrast .composer-box:focus-within {
+  border-color: var(--vscode-contrastActiveBorder);
+  box-shadow: 0 0 0 1px var(--vscode-contrastActiveBorder);
+}
+@keyframes composer-mode-pulse {
+  0% {
+    border-color: var(--ca-mode-lit);
+    box-shadow: 0 0 0 3px var(--ca-mode-glow);
+  }
+  100% {
+    border-color: inherit;
+    box-shadow: 0 0 0 1px transparent;
+  }
+}
+.composer-box.mode-pulse {
+  animation: composer-mode-pulse 420ms ease-out 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .composer-box.mode-pulse {
+    animation: none;
+  }
 }
 .composer-box.disabled {
   opacity: 0.6;
@@ -1433,6 +1461,7 @@ body.vscode-high-contrast:not(.vscode-high-contrast-light) .shiki span {
 .mode-button svg {
   width: 14px;
   height: 14px;
+  color: var(--ca-mode);
 }
 .send-btn {
   display: inline-flex;
@@ -1449,8 +1478,8 @@ body.vscode-high-contrast:not(.vscode-high-contrast-light) .shiki span {
   flex: none;
 }
 .send-btn.ready {
-  background: var(--ca-accent);
-  color: var(--ca-accent-ink);
+  background: var(--ca-mode);
+  color: var(--ca-mode-ink);
 }
 .send-btn.ready:hover {
   filter: brightness(0.92);

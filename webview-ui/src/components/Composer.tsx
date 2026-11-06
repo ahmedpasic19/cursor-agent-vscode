@@ -83,6 +83,8 @@ export function Composer(props: Props) {
   const openHistory = useStore((s) => s.openHistory);
   const openHelp = useStore((s) => s.openHelp);
   const ref = useRef<HTMLDivElement>(null);
+  const firstMode = useRef(true);
+  const [pulsing, setPulsing] = useState(false);
   const mention = useStore((s) => s.mention);
   const commands = useStore((s) => s.commands);
   const showNotice = useStore((s) => s.showNotice);
@@ -103,6 +105,20 @@ export function Composer(props: Props) {
     const c = el ? getCaret(el) : undefined;
     if (c !== undefined) caretRef.current = c;
   };
+
+  useEffect(() => {
+    if (firstMode.current) {
+      firstMode.current = false;
+      return;
+    }
+    setPulsing(false);
+    const raf = requestAnimationFrame(() => setPulsing(true));
+    const t = setTimeout(() => setPulsing(false), 460);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(t);
+    };
+  }, [mode]);
 
   // Keep inline chips in sync with the tab's chips: new ones go in at the caret, chips removed
   // elsewhere (e.g. after send) leave the text.
@@ -483,7 +499,8 @@ export function Composer(props: Props) {
         </div>
       )}
       <div
-        className={`composer-box${disabled ? ' disabled' : ''}${drag === 'drop' ? ' drag-over' : ''}`}
+        data-mode={mode}
+        className={`composer-box${disabled ? ' disabled' : ''}${drag === 'drop' ? ' drag-over' : ''}${pulsing ? ' mode-pulse' : ''}`}
         onMouseDown={(e) => {
           if (e.target === e.currentTarget) setTimeout(() => ref.current?.focus(), 0);
         }}
