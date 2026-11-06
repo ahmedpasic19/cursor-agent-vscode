@@ -19,6 +19,11 @@ export interface RunOptions {
   approveMcps?: boolean;
   /** `--plugin-dir` for each local plugin folder. */
   pluginDirs?: string[];
+  /**
+   * Agent run on a resumed Ask chat whose stored mode could not be rewritten: resume with
+   * `--mode plan --force` so the agent can call SwitchMode (docs/ASK_TO_AGENT_SWITCH.md, fallback).
+   */
+  switchViaPlan?: boolean;
 }
 
 export interface RunHandle {
@@ -31,4 +36,9 @@ export interface RunHandle {
 /** Hides the CLI (and a future SDK backend) from the session layer. */
 export interface AgentBackend {
   run(opts: RunOptions, onEvent: (ev: AgentEvent) => void): RunHandle;
+  /**
+   * Sets the mode a resumed session starts in, before `run`. Resolves true on success. Only
+   * backends that store the mode (the CLI) implement it; never called while a run uses the session.
+   */
+  setSessionMode?(sessionId: string, mode: Mode): Promise<boolean>;
 }

@@ -56,8 +56,9 @@ export function extraRoots(cwd: string, workspaceRoots: string[], chips: Context
 }
 
 /**
- * The CLI session keeps its mode across --resume and `--mode` only accepts plan|ask,
- * so going back to Agent mode needs an explicit instruction (docs/CLI_NOTES.md §7).
+ * The CLI session keeps its mode across --resume and `--mode` only accepts plan|ask. Normally we
+ * rewrite the stored mode before resuming (docs/ASK_TO_AGENT_SWITCH.md), so this prefix is only
+ * used when that fails (or on a backend that cannot), together with `--mode plan`.
  */
 // Tested in Phase 2: stronger wording did not prevent the one failed edit before the switch.
 export const SWITCH_TO_AGENT_PREFIX = 'Switch to agent mode, then do the following.\n\n';

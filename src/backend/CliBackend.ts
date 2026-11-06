@@ -1,8 +1,9 @@
 import type { ChildProcess } from 'node:child_process';
-import type { AgentEvent, RunOutcome } from '../shared/events';
+import type { AgentEvent, Mode, RunOutcome } from '../shared/events';
 import { CursorStreamParser } from '../parser/cursorStreamJson';
 import type { AgentBackend, RunHandle, RunOptions } from './AgentBackend';
 import type { CliCapabilities } from './cliCapabilities';
+import { setChatMode } from './cliChatStore';
 import type { CliInfo } from './cliLocator';
 import { LineReader, RingBuffer } from './lineReader';
 import { killTree, spawnCli } from './processUtil';
@@ -21,8 +22,10 @@ export function buildArgs(opts: RunOptions, caps?: CliCapabilities): string[] {
   if (opts.approveMcps && has('--approve-mcps')) args.push('--approve-mcps');
   if (has('--plugin-dir')) for (const d of opts.pluginDirs ?? []) args.push('--plugin-dir', d);
   if (opts.worktreeName && has('--worktree')) args.push('--worktree', opts.worktreeName);
-  if (opts.mode === 'agent') args.push('--force');
-  else if (has('--mode')) args.push('--mode', opts.mode);
+  if (opts.mode === 'agent') {
+    args.push('--force');
+    if (opts.switchViaPlan && has('--mode')) args.push('--mode', 'plan');
+  } else if (has('--mode')) args.push('--mode', opts.mode);
   args.push(...opts.extraArgs);
   return args;
 }
@@ -32,7 +35,14 @@ export class CliBackend implements AgentBackend {
     private readonly cli: CliInfo,
     private readonly log: Logger = () => {},
     private readonly caps?: CliCapabilities,
+    /** Where the CLI keeps chats (`~/.cursor/chats` by default); tests point it elsewhere. */
+    private readonly chatsDir?: string,
   ) {}
+
+  async setSessionMode(sessionId: string, mode: Mode): Promise<boolean> {
+    const r = await setChatMode(sessionId, mode, { chatsDir: this.chatsDir, cli: this.cli, log: this.log });
+    return r === 'ok' || r === 'unchanged';
+  }
 
   run(opts: RunOptions, onEvent: (ev: AgentEvent) => void): RunHandle {
     const args = buildArgs(opts, this.caps);

@@ -330,6 +330,28 @@ export class TabSession {
       this.events.onRunChanges(this, run);
     }
 
+    // Agent turn on a resumed Ask/Plan chat: rewrite the stored mode so the run starts in Agent
+    // (docs/ASK_TO_AGENT_SWITCH.md). If that fails, resume via Plan mode + the switch prefix.
+    let switchViaPlan = false;
+    if (run.mode === 'agent' && this.sessionId && this.sessionMode && this.sessionMode !== 'agent' && backend.setSessionMode) {
+      let ok = false;
+      try {
+        ok = await backend.setSessionMode(this.sessionId, 'agent');
+      } catch {
+        ok = false;
+      }
+      if (ok) this.sessionMode = 'agent';
+      else switchViaPlan = true;
+      // Stopped while the store was being updated.
+      if (this.active?.run !== run) {
+        if (run.changes?.status === 'pending' && preSha) {
+          run.changes = { status: 'ready', preSha, postSha: preSha, files: [] };
+          this.events.onRunChanges(this, run);
+        }
+        return;
+      }
+    }
+
     const touched = new Set<string>();
     this.touched.set(run.id, touched);
     if (run.mode === 'agent') overlap?.agentRunStarted(this, run);
@@ -354,6 +376,7 @@ export class TabSession {
         ...runSettings,
         worktreeName: useWorktree ? this.worktreeName : undefined,
         addDirs: addDirs.length ? addDirs : undefined,
+        switchViaPlan: switchViaPlan || undefined,
       },
       (ev) => {
         run.events.push(ev);
@@ -379,6 +402,8 @@ export class TabSession {
     // effect once the agent calls switchMode (handled in the event callback above).
     if (run.mode !== 'agent' || !this.sessionMode) this.sessionMode = run.mode;
     const outcome = await active.handle.done;
+    // The in-run SwitchMode is not saved: the chat is stored in Plan mode now.
+    if (switchViaPlan) this.sessionMode = 'plan';
     if (ckpt && preSha) {
       // Diff even after errors/stops: the agent may have changed files before failing.
       try {
