@@ -9,6 +9,8 @@ interface Props {
   className?: string;
   /** Muted header line (e.g. "Modes", or "<model> · <description>"). */
   header?: ReactNode;
+  /** Optional row between the list and `footer` (e.g. effort meter above model list stats). */
+  secondaryFooter?: ReactNode;
   footer?: ReactNode;
   children: ReactNode;
   label: string;
@@ -18,7 +20,7 @@ interface Props {
  * Claude Code–style floating panel: surface background, hairline border, soft shadow.
  * Closes on outside mousedown and Escape. Keyboard navigation is up to the children.
  */
-export function Popover({ open, onClose, placement, align = 'left', className, header, footer, children, label }: Props) {
+export function Popover({ open, onClose, placement, align = 'left', className, header, secondaryFooter, footer, children, label }: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,6 +50,7 @@ export function Popover({ open, onClose, placement, align = 'left', className, h
     <div ref={ref} className={`popover ${placement} align-${align} ${className ?? ''}`} role="dialog" aria-label={label}>
       {header && <div className="popover-header">{header}</div>}
       {children}
+      {secondaryFooter && <div className="popover-footer popover-secondary-footer">{secondaryFooter}</div>}
       {footer && <div className="popover-footer">{footer}</div>}
     </div>
   );

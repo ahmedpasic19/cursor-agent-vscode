@@ -301,6 +301,79 @@ kbd {
   border-top: 1px solid var(--ca-border);
   font-size: 11px;
 }
+.popover-secondary-footer {
+  border-top: 1px solid var(--ca-border);
+}
+.effort-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 26px;
+  padding: 2px 0;
+  font-size: 11px;
+  color: var(--ca-text);
+  outline: none;
+}
+.effort-row.disabled {
+  color: var(--ca-muted);
+  pointer-events: none;
+}
+.effort-row:not(.disabled):focus-visible {
+  border-radius: var(--ca-radius);
+  box-shadow: 0 0 0 1px var(--ca-accent);
+}
+.effort-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  min-width: 0;
+}
+.effort-icon-wrap {
+  display: inline-flex;
+  color: var(--ca-muted);
+  flex-shrink: 0;
+}
+.effort-track {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.effort-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--ca-muted);
+  opacity: 0.35;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+.effort-row.disabled .effort-dot {
+  opacity: 0.2;
+  cursor: default;
+  pointer-events: none;
+}
+.effort-dot.on {
+  min-width: 18px;
+  width: auto;
+  padding: 0 6px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ca-accent);
+  opacity: 1;
+}
+.effort-dot:not(:disabled):hover {
+  opacity: 0.7;
+}
+.effort-dot.on:not(:disabled):hover {
+  opacity: 1;
+}
 .popover-search {
   display: flex;
   align-items: center;

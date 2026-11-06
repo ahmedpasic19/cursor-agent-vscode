@@ -662,7 +662,14 @@ export function Composer(props: Props) {
             </span>
           )}
           <span className="spacer" />
-          <ModeSelect mode={mode} modesSupported={modesSupported} onChange={props.onModeChange} />
+          <ModeSelect
+            mode={mode}
+            modesSupported={modesSupported}
+            models={models}
+            model={model}
+            onChange={props.onModeChange}
+            onModelChange={props.onModelChange}
+          />
           {running ? (
             <button className="send-btn stop" onClick={props.onStop} title="Stop (Esc)" aria-label="Stop">
               <StopIcon />

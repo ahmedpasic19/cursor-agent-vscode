@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import type { Mode } from '../../../src/shared/events';
+import type { ModelOption } from '../../../src/shared/protocol';
 import { ChatIcon, CodeIcon, PlanIcon } from '../sessions/icons';
+import { EffortMeter } from './EffortMeter';
 import { OptionRow, Popover } from './Popover';
 
 export const MODES: { id: Mode; label: string; hint: string; icon: () => ReactNode }[] = [
@@ -19,14 +21,18 @@ interface Props {
   mode: Mode;
   /** False when the CLI has no --mode flag: only Agent is available. */
   modesSupported: boolean;
+  models: ModelOption[];
+  model?: string;
   onChange(mode: Mode): void;
+  onModelChange(model: string | undefined): void;
 }
 
 /** Claude Code–style mode button + popover ("Modes · ⇧+tab to switch"). */
-export function ModeSelect({ mode, modesSupported, onChange }: Props) {
+export function ModeSelect({ mode, modesSupported, models, model, onChange, onModelChange }: Props) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
+  const effortRef = useRef<HTMLDivElement>(null);
   const current = MODES.find((m) => m.id === mode) ?? MODES[0]!;
   const Icon = current.icon;
   const close = useCallback(() => setOpen(false), []);
@@ -44,6 +50,16 @@ export function ModeSelect({ mode, modesSupported, onChange }: Props) {
     setOpen(false);
   };
   const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      const meter = effortRef.current;
+      if (meter && document.activeElement === listRef.current) {
+        e.preventDefault();
+        e.stopPropagation();
+        meter.focus();
+        meter.dispatchEvent(new KeyboardEvent('keydown', { key: e.key, bubbles: true }));
+      }
+      return;
+    }
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setActive((a) => (a + 1) % MODES.length);
@@ -58,6 +74,13 @@ export function ModeSelect({ mode, modesSupported, onChange }: Props) {
       onChange(nextMode(mode, modesSupported));
     }
   };
+
+  const onEffortChange = useCallback(
+    (mid: string) => {
+      onModelChange(mid);
+    },
+    [onModelChange],
+  );
 
   return (
     <div className="mode-select">
@@ -88,6 +111,7 @@ export function ModeSelect({ mode, modesSupported, onChange }: Props) {
             </span>
           </>
         }
+        footer={<EffortMeter ref={effortRef} models={models} model={model} onChange={onEffortChange} />}
       >
         <div className="option-list" role="listbox" tabIndex={0} ref={listRef} onKeyDown={onKey} aria-label="Modes">
           {MODES.map((m, i) => {
