@@ -1,5 +1,6 @@
 import type { Mode } from '../shared/events';
 import type { ContextChip } from '../shared/protocol';
+import { expandChipTokens } from '../shared/inlineChips';
 
 export interface PromptInput {
   text: string;
@@ -113,8 +114,10 @@ export function serializeChips(chips: ContextChip[], cwd?: string): string {
 
 export function buildPrompt(input: PromptInput): string {
   const prefix = input.mode === 'agent' && input.sessionMode && input.sessionMode !== 'agent' ? SWITCH_TO_AGENT_PREFIX : '';
-  if (!input.chips?.length) return prefix + input.text;
-  return `${prefix}${serializeChips(input.chips, input.cwd)}\n\n<user_message>\n${input.text}\n</user_message>`;
+  // Inline chip tokens become `@path:lines` mentions that point at the <attached_context> entries.
+  const text = expandChipTokens(input.text, input.chips);
+  if (!input.chips?.length) return prefix + text;
+  return `${prefix}${serializeChips(input.chips, input.cwd)}\n\n<user_message>\n${text}\n</user_message>`;
 }
 
 export function titleFrom(text: string, max = 30): string {

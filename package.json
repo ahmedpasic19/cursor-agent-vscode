@@ -150,12 +150,12 @@
       },
       {
         "command": "cursorAgent.setSdkApiKey",
-        "title": "Set SDK API Key",
+        "title": "Set API Key",
         "category": "Cursor Agent"
       },
       {
         "command": "cursorAgent.clearSdkApiKey",
-        "title": "Clear SDK API Key",
+        "title": "Clear API Key",
         "category": "Cursor Agent"
       },
       {
@@ -540,6 +540,11 @@
           ],
           "default": "cli",
           "description": "Which agent runtime to use."
+        },
+        "cursorAgent.cli.useApiKey": {
+          "type": "boolean",
+          "default": false,
+          "description": "CLI backend only: authenticate with the Cursor API key saved by \"Cursor Agent: Set API Key\" (passed as CURSOR_API_KEY) instead of the CLI's own login. Easiest to change in the Settings section of the Cursor sidebar."
         },
         "cursorAgent.sdk.nodePath": {
           "type": "string",

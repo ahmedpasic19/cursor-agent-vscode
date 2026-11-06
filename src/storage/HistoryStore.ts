@@ -6,6 +6,8 @@
  * deactivate(), where async work may not complete.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chipLabel, expandChipTokens } from '../shared/inlineChips';
+import type { ContextChip } from '../shared/protocol';
 import { join } from 'node:path';
 import type { HistoryItem } from '../shared/protocol';
 import type { PersistedTab } from '../session/TabSession';
@@ -134,7 +136,7 @@ export class HistoryStore {
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
         messageCount: users.length,
-        preview: (users[0] as { text: string }).text.slice(0, 300),
+        preview: previewOf(users[0] as { text: string; chips?: ContextChip[] }),
         open: openIds.has(id),
       });
     }
@@ -157,4 +159,8 @@ export class HistoryStore {
     if (deleted.length) this.opts.log?.(`[history] pruned ${deleted.length} old chat(s)`);
     return deleted;
   }
+}
+
+function previewOf(u: { text: string; chips?: ContextChip[] }): string {
+  return expandChipTokens(u.text, u.chips, chipLabel).slice(0, 300);
 }

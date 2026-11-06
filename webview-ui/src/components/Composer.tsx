@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react';
 import type { Mode } from '../../../src/shared/events';
 import type { ContextChip, ModelOption } from '../../../src/shared/protocol';
 import { ArrowUpIcon, BranchIcon, FileIcon, PlusIcon, SlashIcon, StopIcon, WarnIcon } from '../sessions/icons';
 import { useStore } from '../state/store';
 import { send } from '../vscode';
 import { attachImages, IMAGE_TYPES, imageFiles, imageUris } from '../images';
-import { ContextChips } from './ContextChips';
+import { chipIdsIn, chipToken, CHIP_TOKEN_RE } from '../../../src/shared/inlineChips';
+import { openChip } from './ContextChips';
+import { getCaret, render, serialize, setCaret } from './richInput';
 import { ModelSelect } from './ModelSelect';
 import { MODES, ModeSelect, nextMode } from './ModeSelect';
 import { OptionRow, Popover } from './Popover';
@@ -63,10 +65,18 @@ const drafts = new Map<string, string>();
 export function Composer(props: Props) {
   const { tabId, chips, running, mode, model, models, modesSupported, disabled, focusRequest } = props;
   const [text, setTextState] = useState(() => (tabId ? (drafts.get(tabId) ?? '') : ''));
+  const textRef = useRef(text);
   const setText = (v: string) => {
+    textRef.current = v;
     setTextState(v);
     if (tabId) drafts.set(tabId, v);
   };
+  /** Last caret offset in `text` (kept while the webview is blurred, so new chips land there). */
+  const caretRef = useRef<number | undefined>(undefined);
+  /** Chips the input has already placed; a chip not in here is new and gets inserted at the caret. */
+  const known = useRef(new Set<string>(chipIdsIn(text)));
+  const chipsRef = useRef(chips);
+  chipsRef.current = chips;
   const [popup, setPopup] = useState<Popup>();
   const [active, setActive] = useState(0);
   const [modelOpen, setModelOpen] = useState(0);
@@ -74,21 +84,61 @@ export function Composer(props: Props) {
   const closeAttach = useCallback(() => setAttachOpen(false), []);
   const openHistory = useStore((s) => s.openHistory);
   const openHelp = useStore((s) => s.openHelp);
-  const ref = useRef<HTMLTextAreaElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
   const mention = useStore((s) => s.mention);
   const showNotice = useStore((s) => s.showNotice);
 
-  // Auto-grow.
-  useLayoutEffect(() => {
+  /** Set the value programmatically: state, DOM and (optionally) the caret. */
+  const apply = (value: string, caret?: number) => {
+    setText(value);
     const el = ref.current;
     if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight + 2, 300)}px`;
-    el.style.overflowY = el.scrollHeight > 300 ? 'auto' : 'hidden';
-  }, [text]);
+    render(el, value, chipsRef.current);
+    if (caret !== undefined) {
+      caretRef.current = caret;
+      if (document.activeElement === el) setCaret(el, caret);
+    }
+  };
+  const trackCaret = () => {
+    const el = ref.current;
+    const c = el ? getCaret(el) : undefined;
+    if (c !== undefined) caretRef.current = c;
+  };
+
+  // Keep inline chips in sync with the tab's chips: new ones go in at the caret, chips removed
+  // elsewhere (e.g. after send) leave the text.
+  useLayoutEffect(() => {
+    const ids = new Set(chips.map((c) => c.id));
+    let t = textRef.current;
+    let caret = caretRef.current ?? t.length;
+    for (const id of chipIdsIn(t)) {
+      if (ids.has(id)) continue;
+      const tok = chipToken(id);
+      const at = t.indexOf(tok);
+      t = t.replace(tok, '');
+      if (at < caret) caret = Math.max(at, caret - tok.length);
+    }
+    for (const c of chips) {
+      if (known.current.has(c.id)) continue;
+      known.current.add(c.id);
+      caret = Math.min(caret, t.length);
+      const pre = t.slice(0, caret);
+      const post = t.slice(caret);
+      const ins = (pre && !/\s$/.test(pre) ? ' ' : '') + chipToken(c.id) + (post.startsWith(' ') ? '' : ' ');
+      t = pre + ins + post;
+      caret += ins.length;
+    }
+    for (const id of [...known.current]) if (!ids.has(id)) known.current.delete(id);
+    const el = ref.current;
+    const keep = el && document.activeElement === el ? getCaret(el) : undefined;
+    apply(t, t === textRef.current && keep !== undefined ? keep : caret);
+  }, [chips]);
 
   useEffect(() => {
-    ref.current?.focus();
+    const el = ref.current;
+    if (!el) return;
+    el.focus();
+    setCaret(el, caretRef.current ?? textRef.current.length);
   }, [focusRequest]);
 
   // ---------- popups ----------
@@ -124,23 +174,21 @@ export function Composer(props: Props) {
     const item = mentionOptions[i];
     if (!item || popup?.kind !== 'mention' || !tabId) return;
     send({ type: 'mention/pick', tabId, path: item.path, isFolder: item.isFolder, root: item.root });
-    const caret = ref.current?.selectionStart ?? text.length;
+    const caret = (ref.current ? getCaret(ref.current) : undefined) ?? caretRef.current ?? text.length;
+    // The chip arrives from the host a moment later and is inserted where the @query was.
     const next = text.slice(0, popup.start) + text.slice(caret);
-    setText(next.replace(/ {2,}/g, ' '));
+    ref.current?.focus();
+    apply(next, popup.start);
     setPopup(undefined);
-    setTimeout(() => {
-      ref.current?.focus();
-      ref.current?.setSelectionRange(popup.start, popup.start);
-    }, 0);
   };
 
   const pickSlash = (i: number) => {
     const c = slashOptions[i];
     if (!c) return;
     if (c.args) {
-      setText(`/${c.name} `);
-      setPopup(undefined);
       ref.current?.focus();
+      apply(`/${c.name} `, c.name.length + 2);
+      setPopup(undefined);
     } else {
       runSlash(`/${c.name}`);
     }
@@ -152,7 +200,7 @@ export function Composer(props: Props) {
     if (!m) return false;
     const [, name, arg] = m;
     const clear = () => {
-      setText('');
+      apply('', 0);
       setPopup(undefined);
     };
     switch (name) {
@@ -195,16 +243,24 @@ export function Composer(props: Props) {
   const hasImage = chips.some((c) => c.kind === 'image');
   const submit = () => {
     // An image alone is a valid message.
-    const t = text.trim() || (hasImage ? 'Take a look at the attached image.' : '');
+    const plain = text.replace(CHIP_TOKEN_RE, '').trim();
+    // An image alone is a valid message; other chips alone are sent as their mentions.
+    const t = plain
+      ? text.trim()
+      : hasImage
+        ? `${text.trim()} Take a look at the attached image.`.trim()
+        : chips.length
+          ? text.trim()
+          : '';
     if (!t || disabled) return;
     if (t.startsWith('/') && runSlash(t)) return;
     if (running) return;
     props.onSend(t, chips.map((c) => c.id));
-    setText('');
+    apply('', 0);
     setPopup(undefined);
   };
 
-  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (popup && optionCount > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -228,9 +284,12 @@ export function Composer(props: Props) {
       setPopup(undefined);
       return;
     }
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      submit();
+      if (!e.shiftKey) return submit();
+      // Shift+Enter: a plain newline (the browser's own would insert <div>s).
+      const c = (ref.current ? getCaret(ref.current) : undefined) ?? text.length;
+      apply(text.slice(0, c) + '\n' + text.slice(c), c + 1);
     } else if (e.key === 'Escape' && running) {
       e.preventDefault();
       props.onStop();
@@ -240,37 +299,25 @@ export function Composer(props: Props) {
     } else if (e.key === 'ArrowUp' && !text && props.lastSent) {
       // Recall the last message into an empty composer (like a shell).
       e.preventDefault();
-      setText(props.lastSent);
-    } else if (e.key === 'Backspace' && !text && chips.length && tabId) {
-      // Backspace in an empty composer removes the last chip.
-      e.preventDefault();
-      send({ type: 'chip/remove', tabId, chipId: chips[chips.length - 1]!.id });
+      apply(props.lastSent, props.lastSent.length);
     }
   };
 
   /** Insert a trigger character at the caret and open its popup (the + and / buttons). */
   const insertTrigger = (ch: '@' | '/') => {
-    const el = ref.current;
+    ref.current?.focus();
     if (ch === '/') {
-      setText('/');
+      apply('/', 1);
       setPopup({ kind: 'slash', query: '' });
       setActive(0);
-      setTimeout(() => {
-        el?.focus();
-        el?.setSelectionRange(1, 1);
-      }, 0);
       return;
     }
-    const caret = el?.selectionStart ?? text.length;
+    const caret = Math.min(caretRef.current ?? text.length, text.length);
     const pre = text.slice(0, caret);
     const ins = pre && !/\s$/.test(pre) ? ' @' : '@';
     const next = pre + ins + text.slice(caret);
-    setText(next);
+    apply(next, caret + ins.length);
     detectPopup(next, caret + ins.length);
-    setTimeout(() => {
-      el?.focus();
-      el?.setSelectionRange(caret + ins.length, caret + ins.length);
-    }, 0);
   };
 
   const canSend = (!!text.trim() || hasImage) && !disabled;
@@ -374,27 +421,74 @@ export function Composer(props: Props) {
             e.currentTarget.value = '';
           }}
         />
-        <ContextChips chips={chips} tabId={tabId} />
-        <textarea
+        <div
           ref={ref}
-          value={text}
-          rows={1}
-          placeholder={running ? 'Working… press Esc to stop' : PLACEHOLDER[mode]}
-          onChange={(e) => {
-            setText(e.target.value);
-            detectPopup(e.target.value, e.target.selectionStart);
+          className={`composer-input${text ? '' : ' is-empty'}`}
+          contentEditable={!disabled}
+          suppressContentEditableWarning
+          role="textbox"
+          aria-multiline="true"
+          aria-label="Message"
+          data-placeholder={running ? 'Working… press Esc to stop' : PLACEHOLDER[mode]}
+          onInput={(e) => {
+            const el = e.currentTarget;
+            const v = serialize(el);
+            // Chips deleted with Backspace/Delete/cut leave the tab too.
+            const left = new Set(chipIdsIn(v));
+            for (const id of [...known.current]) {
+              if (left.has(id)) continue;
+              known.current.delete(id);
+              if (tabId) send({ type: 'chip/remove', tabId, chipId: id });
+            }
+            if (!v && el.childNodes.length) el.replaceChildren();
+            setText(v);
+            const c = getCaret(el);
+            if (c !== undefined) caretRef.current = c;
+            detectPopup(v, c ?? v.length);
           }}
-          onClick={(e) => detectPopup(text, e.currentTarget.selectionStart)}
+          onKeyUp={trackCaret}
+          onMouseUp={trackCaret}
+          onClick={(e: MouseEvent<HTMLDivElement>) => {
+            const target = e.target as HTMLElement;
+            const removeId = target.closest<HTMLElement>('[data-remove]')?.dataset.remove;
+            if (removeId) {
+              e.preventDefault();
+              known.current.delete(removeId);
+              const t = textRef.current.replace(chipToken(removeId), '').replace(/ {2,}/g, ' ');
+              apply(t, Math.min(caretRef.current ?? t.length, t.length));
+              if (tabId) send({ type: 'chip/remove', tabId, chipId: removeId });
+              return;
+            }
+            const chipId = target.closest<HTMLElement>('[data-chip]')?.dataset.chip;
+            const chip = chipId ? chips.find((c) => c.id === chipId) : undefined;
+            if (chip) return openChip(chip);
+            const c = getCaret(e.currentTarget);
+            detectPopup(text, c ?? text.length);
+          }}
           onBlur={() => setTimeout(() => setPopup(undefined), 150)}
           onKeyDown={onKeyDown}
           onPaste={(e) => {
+            e.preventDefault();
             // Screenshots (Win+Shift+S) and copied images arrive as clipboard files.
             const files = imageFiles(e.clipboardData.files);
-            if (!files.length) return;
-            e.preventDefault();
-            addImages(files);
+            if (files.length) return addImages(files);
+            // Plain text only: no pasted HTML in the input.
+            const pasted = e.clipboardData.getData('text/plain').replace(/\r\n?/g, '\n').replace(/[]/g, '');
+            if (!pasted) return;
+            const c = getCaret(e.currentTarget) ?? text.length;
+            const next = text.slice(0, c) + pasted + text.slice(c);
+            apply(next, c + pasted.length);
+            detectPopup(next, c + pasted.length);
           }}
-          aria-label="Message"
+          onDrop={(e) => {
+            // Dropped text arrives as plain text too; files/images are handled by the box.
+            const plainText = e.dataTransfer.getData('text/plain');
+            if (!plainText || [...e.dataTransfer.types].some((t) => t === 'Files' || t === 'application/vnd.code.uri-list')) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const c = caretRef.current ?? text.length;
+            apply(text.slice(0, c) + plainText + text.slice(c), c + plainText.length);
+          }}
         />
         <div className="composer-bar">
           <div className="attach-menu">

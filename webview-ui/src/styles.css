@@ -482,17 +482,56 @@ kbd {
   margin: 14px 0 12px;
   padding: 8px 12px;
   border-radius: var(--ca-radius-lg);
-  background: var(--ca-surface-2);
-  border: 1px solid var(--ca-border);
+  background: var(--vscode-input-background, var(--ca-surface));
+  border: 1px solid var(--vscode-input-border, var(--ca-border));
+  color: var(--vscode-input-foreground, var(--ca-text));
+}
+.user-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.user-head .chips {
+  margin: 0;
 }
 .user-text {
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: 1.5;
+  line-height: 1.6;
+  overflow: hidden;
+}
+.user-msg.collapsed .user-text {
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
+  mask-image: linear-gradient(to bottom, #000 55%, transparent);
+}
+.user-more {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: var(--ca-radius);
+  border: 1px solid var(--ca-border);
+  background: var(--ca-surface-2);
+  color: var(--ca-text);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.user-msg:hover .user-more,
+.user-more:focus-visible {
+  opacity: 1;
+}
+.user-more:hover {
+  background: var(--ca-active);
+}
+.user-msg:has(.user-more[aria-expanded='true']) {
+  padding-bottom: 30px;
 }
 .user-mode {
   display: inline-block;
-  margin-top: 4px;
   font-size: 10.5px;
   text-transform: capitalize;
   color: var(--ca-muted);
@@ -1293,22 +1332,78 @@ body.vscode-high-contrast:not(.vscode-high-contrast-light) .shiki span {
 .composer-box.disabled {
   opacity: 0.6;
 }
-.composer textarea {
+.composer-input {
   width: 100%;
   min-height: 40px;
-  resize: none;
+  max-height: 300px;
+  overflow-y: auto;
   font-family: var(--vscode-font-family);
   font-size: var(--vscode-font-size);
   color: var(--vscode-input-foreground, var(--ca-text));
   background: transparent;
-  border: none;
   outline: none;
   padding: 2px 2px 6px;
-  max-height: 300px;
-  line-height: 1.5;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  cursor: text;
 }
-.composer textarea::placeholder {
+.composer-input.is-empty::before {
+  content: attr(data-placeholder);
   color: var(--vscode-input-placeholderForeground, var(--ca-muted));
+  pointer-events: none;
+}
+/* Inline chips: in the composer and in sent messages. */
+.chip.chip-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  margin: 0 1px;
+  padding: 0 6px;
+  vertical-align: baseline;
+  line-height: 18px;
+  font-size: 11.5px;
+  font-family: var(--vscode-font-family);
+  border-radius: var(--ca-radius);
+  border: 1px solid var(--ca-border);
+  background: color-mix(in srgb, var(--vscode-textLink-foreground, #3794ff) 14%, var(--ca-bg));
+  color: var(--ca-text);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.chip.chip-inline:hover {
+  border-color: var(--ca-border-strong);
+}
+.chip.chip-inline .chip-icon {
+  font-size: 10px;
+  opacity: 0.8;
+}
+.chip.chip-inline .chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chip.chip-inline .chip-thumb {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  border-radius: 3px;
+  object-fit: cover;
+}
+.chip-x {
+  margin-left: 1px;
+  padding: 0 2px;
+  border-radius: 3px;
+  color: var(--ca-muted);
+  display: none;
+}
+.chip.chip-inline:hover .chip-x {
+  display: inline;
+}
+.chip-x:hover {
+  color: var(--ca-text);
+  background: var(--ca-hover);
 }
 .composer-bar {
   display: flex;

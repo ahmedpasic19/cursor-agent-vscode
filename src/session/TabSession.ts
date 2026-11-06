@@ -1,4 +1,5 @@
 import type { AgentBackend, RunHandle } from '../backend/AgentBackend';
+import { chipLabel, expandChipTokens } from '../shared/inlineChips';
 import type { CheckpointService } from '../checkpoints/CheckpointService';
 import type { AgentEvent, Mode, RunOutcome } from '../shared/events';
 import { addChip, type AddResult } from '../context/chips';
@@ -242,7 +243,7 @@ export class TabSession {
     this.mode = mode;
     this.model = model || undefined;
     if (!this.titled) {
-      this.title = titleFrom(text);
+      this.title = titleFrom(expandChipTokens(text, attached, chipLabel));
       this.titled = true;
     }
     const user: UserMessage = {

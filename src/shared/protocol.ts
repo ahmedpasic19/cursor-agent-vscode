@@ -201,6 +201,20 @@ export const AccountInfoSchema = z.object({
 });
 export type AccountInfo = z.infer<typeof AccountInfoSchema>;
 
+/** How the extension talks to Cursor: CLI with its own login, CLI with an API key, or the SDK. */
+export const ConnectionSetupSchema = z.enum(['cliLogin', 'cliKey', 'sdk']);
+export type ConnectionSetup = z.infer<typeof ConnectionSetupSchema>;
+export const ConnectionInfoSchema = z.object({
+  setup: ConnectionSetupSchema,
+  /** A Cursor API key is saved in Secret Storage (or CURSOR_API_KEY is set). */
+  hasKey: z.boolean(),
+  /** Last 4 characters of the saved key, for recognition. */
+  keyHint: z.string().optional(),
+  /** The key comes from the CURSOR_API_KEY environment variable, not Secret Storage. */
+  keyFromEnv: z.boolean().optional(),
+});
+export type ConnectionInfo = z.infer<typeof ConnectionInfoSchema>;
+
 export const UsageTotalsSchema = z.object({
   input: z.number(),
   output: z.number(),
@@ -218,6 +232,27 @@ export const UsageSummarySchema = z.object({
   dailyBudget: z.number(),
 });
 export type UsageSummary = z.infer<typeof UsageSummarySchema>;
+
+/** Cursor plan usage for the current billing period (same numbers as the CLI's /usage). */
+export const PlanUsageSchema = z.object({
+  planName: z.string().optional(),
+  /** Percent of the included plan usage, 0–100+. */
+  includedPct: z.number().optional(),
+  autoPct: z.number().optional(),
+  apiPct: z.number().optional(),
+  onDemand: z.object({ enabled: z.boolean(), usedCents: z.number().optional(), limitCents: z.number().optional() }),
+  /** Billing period end, epoch ms. */
+  cycleEnd: z.number().optional(),
+  message: z.string().optional(),
+});
+export type PlanUsage = z.infer<typeof PlanUsageSchema>;
+
+export const PlanUsageStateSchema = z.union([
+  z.object({ status: z.literal('ok'), usage: PlanUsageSchema }),
+  /** noToken: not logged in / token not found; auth: token rejected; error: network or API change. */
+  z.object({ status: z.enum(['noToken', 'auth', 'error', 'loading']), message: z.string().optional() }),
+]);
+export type PlanUsageState = z.infer<typeof PlanUsageStateSchema>;
 
 export const MentionItemSchema = z.object({
   path: z.string(),
@@ -252,9 +287,11 @@ export const HostMessageSchema = z.discriminatedUnion('type', [
     groups: z.array(SessionGroupSchema),
     activeId: z.string().optional(),
   }),
-  z.object({ type: z.literal('account/state'), account: AccountInfoSchema, usage: UsageSummarySchema }),
+  z.object({ type: z.literal('account/state'), account: AccountInfoSchema, usage: UsageSummarySchema, plan: PlanUsageStateSchema.optional(), connection: ConnectionInfoSchema.optional() }),
   /** Focus the Session Manager search box. */
   z.object({ type: z.literal('sessions/focusSearch') }),
+  /** Open and scroll to the Settings section of the sessions view (gear button). */
+  z.object({ type: z.literal('settings/focus') }),
   /** Open the chat panel's history dropdown (clock button, /history, Cursor: Show Sessions). */
   z.object({ type: z.literal('history/open') }),
   z.object({ type: z.literal('chips/updated'), tabId: z.string(), chips: z.array(ContextChipSchema) }),
@@ -361,5 +398,9 @@ export const WebviewMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('sdk/install') }),
   z.object({ type: z.literal('sdk/setKey') }),
   z.object({ type: z.literal('backend/switch'), backend: z.enum(['cli', 'sdk']) }),
+  z.object({ type: z.literal('connection/setup'), setup: ConnectionSetupSchema }),
+  z.object({ type: z.literal('apiKey/clear') }),
+  /** Open a cursor.com page (dashboard, API keys) in the browser. */
+  z.object({ type: z.literal('link/open'), url: z.string() }),
 ]);
 export type WebviewMessage = z.infer<typeof WebviewMessageSchema>;

@@ -1,7 +1,8 @@
 import type { ContextChip } from '../../../src/shared/protocol';
+import { chipLabel } from '../../../src/shared/inlineChips';
 import { send } from '../vscode';
 
-const ICON: Record<ContextChip['kind'], string> = {
+export const CHIP_ICON: Record<ContextChip['kind'], string> = {
   selection: '⌗',
   file: '📄',
   image: '🖼',
@@ -9,24 +10,9 @@ const ICON: Record<ContextChip['kind'], string> = {
   diagnostics: '⚠',
 };
 
-function label(c: ContextChip): string {
-  switch (c.kind) {
-    case 'selection': {
-      const name = c.path.split('/').pop() ?? c.path;
-      return `${name}:${c.startLine === c.endLine ? c.startLine : `${c.startLine}-${c.endLine}`}`;
-    }
-    case 'file':
-      return c.isFolder ? `${c.path.split('/').pop()}/` : (c.path.split('/').pop() ?? c.path);
-    case 'image':
-      return c.name;
-    case 'terminal':
-      return `${c.name} (${c.lineCount} line${c.lineCount === 1 ? '' : 's'})`;
-    case 'diagnostics':
-      return `${c.items.length} problem${c.items.length === 1 ? '' : 's'}${c.path ? ` in ${c.path.split('/').pop()}` : ''}`;
-  }
-}
+const label = chipLabel;
 
-function tooltip(c: ContextChip): string {
+export function chipTooltip(c: ContextChip): string {
   switch (c.kind) {
     case 'selection': {
       const head = `${c.path} lines ${c.startLine}–${c.endLine}`;
@@ -52,7 +38,7 @@ function formatBytes(n: number): string {
   return n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${Math.round(n / 1024)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
-function openChip(c: ContextChip) {
+export function openChip(c: ContextChip) {
   if (c.kind === 'image') return send({ type: 'file/open', path: c.absPath });
   if (c.kind === 'selection') send({ type: 'file/open', path: c.absPath, line: c.startLine, endLine: c.endLine });
   else if (c.kind === 'file' && !c.isFolder) send({ type: 'file/open', path: c.absPath });
@@ -71,13 +57,13 @@ export function ContextChips({ chips, tabId, readOnly }: Props) {
   return (
     <div className={`chips${readOnly ? ' readonly' : ''}`}>
       {chips.map((c) => (
-        <span key={c.id} className={`chip chip-${c.kind}`} title={tooltip(c)}>
+        <span key={c.id} className={`chip chip-${c.kind}`} title={chipTooltip(c)}>
           <button className="chip-main" onClick={() => openChip(c)} tabIndex={readOnly ? -1 : 0}>
             {c.kind === 'image' && c.thumb ? (
               <img className="chip-thumb" src={c.thumb} alt="" />
             ) : (
               <span className="chip-icon" aria-hidden>
-                {ICON[c.kind]}
+                {CHIP_ICON[c.kind]}
               </span>
             )}
             <span className="chip-label">{label(c)}</span>
@@ -104,5 +90,21 @@ export function ContextChips({ chips, tabId, readOnly }: Props) {
         </span>
       ))}
     </div>
+  );
+}
+
+/** One read-only chip, used inline in sent messages. */
+export function InlineChip({ chip }: { chip: ContextChip }) {
+  return (
+    <button type="button" className={`chip chip-inline chip-${chip.kind}`} title={chipTooltip(chip)} onClick={() => openChip(chip)}>
+      {chip.kind === 'image' && chip.thumb ? (
+        <img className="chip-thumb" src={chip.thumb} alt="" />
+      ) : (
+        <span className="chip-icon" aria-hidden>
+          {CHIP_ICON[chip.kind]}
+        </span>
+      )}
+      <span className="chip-label">{chipLabel(chip)}</span>
+    </button>
   );
 }

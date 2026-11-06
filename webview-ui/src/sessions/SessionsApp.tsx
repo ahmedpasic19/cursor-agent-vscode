@@ -1,8 +1,9 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { send } from '../vscode';
 import { AccountBody } from './AccountSection';
 import { ChevronIcon, CloseIcon } from './icons';
 import { SessionManagerBody } from './SessionManager';
+import { SettingsBody } from './SettingsSection';
 import { useSessions } from './store';
 
 function Section({
@@ -55,8 +56,12 @@ function Notice() {
 
 /** Left sidebar: Account & Usage over the Session Manager, like Claude Code's layout. */
 export function SessionsApp() {
-  const { account, usage, accountOpen, sessionsOpen } = useSessions();
+  const { account, usage, plan, connection, accountOpen, sessionsOpen, settingsOpen, settingsRequest } = useSessions();
   const setPref = useSessions((s) => s.set);
+  const settingsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (settingsRequest) settingsRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [settingsRequest]);
   return (
     <div className="sessions-app">
       <Section
@@ -69,8 +74,13 @@ export function SessionsApp() {
           </button>
         }
       >
-        <AccountBody account={account} usage={usage} />
+        <AccountBody account={account} usage={usage} plan={plan} />
       </Section>
+      <div ref={settingsRef}>
+        <Section title="Settings" open={settingsOpen} onToggle={() => setPref('settingsOpen', !settingsOpen)}>
+          <SettingsBody connection={connection} account={account} />
+        </Section>
+      </div>
       <Section title="Session Manager" open={sessionsOpen} onToggle={() => setPref('sessionsOpen', !sessionsOpen)} grow>
         <SessionManagerBody />
       </Section>

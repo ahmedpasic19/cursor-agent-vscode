@@ -3,13 +3,13 @@ import type { Mode } from '../../src/shared/events';
 import { ChatHeader } from './components/ChatHeader';
 import { CliBanner } from './components/CliBanner';
 import { Composer } from './components/Composer';
-import { ContextChips } from './components/ContextChips';
+import { UserMessage } from './components/UserMessage';
 import { HelpPanel } from './components/HelpPanel';
 import { Mascot } from './components/Mascot';
 import { Notice } from './components/Notice';
 import { RunMessage } from './components/RunMessage';
 import { TabContext } from './components/tools/util';
-import { RestoreIcon } from './sessions/icons';
+import { expandChipTokens } from '../../src/shared/inlineChips';
 import { useStore } from './state/store';
 import { send } from './vscode';
 
@@ -77,7 +77,7 @@ export function App() {
     const t = tab?.transcript ?? [];
     for (let i = t.length - 1; i >= 0; i--) {
       const it = t[i]!;
-      if (it.role === 'user') return it.text;
+      if (it.role === 'user') return expandChipTokens(it.text, it.chips);
     }
     return undefined;
   }, [tab?.transcript]);
@@ -126,22 +126,13 @@ export function App() {
           ) : (
             tab.transcript.map((item) =>
               item.role === 'user' ? (
-                <div key={item.id} className="user-msg">
-                  {item.chips && item.chips.length > 0 && <ContextChips chips={item.chips} readOnly />}
-                  <div className="user-text">{item.text}</div>
-                  {item.mode !== 'agent' && <span className="user-mode">{item.mode}</span>}
-                  {restorable.has(item.id) && (
-                    <button
-                      className="restore-btn icon-btn"
-                      disabled={running}
-                      title="Restore code to before this message (asks first)"
-                      aria-label="Restore code to before this message"
-                      onClick={() => send({ type: 'checkpoint/restore', tabId: tab.meta.id, userMessageId: item.id })}
-                    >
-                      <RestoreIcon />
-                    </button>
-                  )}
-                </div>
+                <UserMessage
+                  key={item.id}
+                  item={item}
+                  running={running}
+                  restorable={restorable.has(item.id)}
+                  onRestore={() => send({ type: 'checkpoint/restore', tabId: tab.meta.id, userMessageId: item.id })}
+                />
               ) : (
                 <RunMessage key={item.id} run={item} view={tab.views[item.id]!} isLatest={item.id === latestRunId} />
               ),

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AccountInfo, HostMessage, SessionGroup, SessionRow, UsageSummary } from '../../../src/shared/protocol';
+import type { AccountInfo, ConnectionInfo, HostMessage, PlanUsageState, SessionGroup, SessionRow, UsageSummary } from '../../../src/shared/protocol';
 import { vscodeState } from '../vscode';
 
 export type SortKey = 'updated' | 'created';
@@ -8,6 +8,7 @@ export type SortKey = 'updated' | 'created';
 interface Persisted {
   accountOpen: boolean;
   sessionsOpen: boolean;
+  settingsOpen: boolean;
   sort: SortKey;
   activeOnly: boolean;
 }
@@ -20,7 +21,11 @@ interface SessionsStore extends Persisted {
   activeId?: string;
   account?: AccountInfo;
   usage?: UsageSummary;
+  plan?: PlanUsageState;
+  connection?: ConnectionInfo;
   searchRequest: number;
+  /** Bumped by the gear button: open + scroll to Settings. */
+  settingsRequest: number;
   notice?: { id: number; level: 'info' | 'warning' | 'error'; text: string };
   /** Lets the harness re-run "now" for relative times. */
   now: number;
@@ -32,17 +37,25 @@ interface SessionsStore extends Persisted {
 export const useSessions = create<SessionsStore>((set, get) => ({
   accountOpen: saved.accountOpen ?? true,
   sessionsOpen: saved.sessionsOpen ?? true,
+  settingsOpen: saved.settingsOpen ?? false,
   sort: saved.sort === 'created' ? 'created' : 'updated',
   activeOnly: !!saved.activeOnly,
   rows: [],
   groups: [],
   searchRequest: 0,
+  settingsRequest: 0,
   now: Date.now(),
 
   set(key, value) {
     set({ [key]: value } as Partial<SessionsStore>);
     const s = get();
-    vscodeState.set({ accountOpen: s.accountOpen, sessionsOpen: s.sessionsOpen, sort: s.sort, activeOnly: s.activeOnly } satisfies Persisted);
+    vscodeState.set({
+      accountOpen: s.accountOpen,
+      sessionsOpen: s.sessionsOpen,
+      settingsOpen: s.settingsOpen,
+      sort: s.sort,
+      activeOnly: s.activeOnly,
+    } satisfies Persisted);
   },
 
   dismissNotice() {
@@ -55,7 +68,11 @@ export const useSessions = create<SessionsStore>((set, get) => ({
         set({ rows: msg.rows, groups: msg.groups, activeId: msg.activeId, now: Date.now() });
         break;
       case 'account/state':
-        set({ account: msg.account, usage: msg.usage });
+        set({ account: msg.account, usage: msg.usage, plan: msg.plan, connection: msg.connection });
+        break;
+      case 'settings/focus':
+        get().set('settingsOpen', true);
+        set({ settingsRequest: get().settingsRequest + 1 });
         break;
       case 'sessions/focusSearch':
         set({ searchRequest: get().searchRequest + 1, sessionsOpen: true });

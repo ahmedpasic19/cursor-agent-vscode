@@ -10,9 +10,11 @@ import { fileChip } from './context/ContextCollector';
 import { imageChipForPath, MAX_IMAGE_BYTES, saveImage } from './context/Attachments';
 import { FileIndex } from './context/FileIndex';
 import { SelectionLens } from './context/SelectionLens';
+import { PlanUsageService } from './account/planUsage';
+import { setCliAuthEnv } from './backend/processUtil';
 import { McpView } from './mcp/McpView';
 import type { Mode } from './shared/events';
-import type { HostMessage, WebviewMessage } from './shared/protocol';
+import type { HostMessage, WebviewMessage, ConnectionInfo, ConnectionSetup, PlanUsageState } from './shared/protocol';
 import { SessionIndex } from './session/SessionIndex';
 import { SessionManager } from './session/SessionManager';
 import { StatusBar } from './statusBar';
@@ -132,15 +134,61 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
 
   const setSdkKey = async () => {
     const key = await vscode.window.showInputBox({
-      title: 'Cursor SDK API key',
-      prompt: 'Create one in the Cursor dashboard (Integrations → API keys). Stored in VS Code Secret Storage. The SDK backend is billed by usage.',
+      title: 'Cursor API key',
+      prompt: 'Create one in the Cursor dashboard (Integrations → API keys). Stored in VS Code Secret Storage. Used by "CLI + API key" and the SDK backend (billed by usage).',
       password: true,
       ignoreFocusOut: true,
       validateInput: (v) => (v.trim().length < 10 ? 'That does not look like an API key.' : undefined),
     });
     if (!key) return;
     await context.secrets.store(SDK_KEY, key.trim());
-    void sdk.refresh();
+    await applyCliAuth();
+    void refreshBackend();
+    planUsage.invalidate();
+    scheduleAccount();
+  };
+
+  // ---- Connection setup: CLI + login, CLI + API key, SDK + API key ----
+  const storedKey = async () => (await context.secrets.get(SDK_KEY)) || undefined;
+  const connectionSetup = (): ConnectionSetup => (useSdk() ? 'sdk' : cfg().get<boolean>('cli.useApiKey', false) ? 'cliKey' : 'cliLogin');
+  /** CLI + API key: every CLI process gets CURSOR_API_KEY from Secret Storage. */
+  const applyCliAuth = async () => {
+    const key = connectionSetup() === 'cliKey' ? await storedKey() : undefined;
+    setCliAuthEnv(key ? { CURSOR_API_KEY: key } : {});
+  };
+  const connectionInfo = async (): Promise<ConnectionInfo> => {
+    const saved = await storedKey();
+    const env = process.env.CURSOR_API_KEY;
+    const key = saved ?? env;
+    return { setup: connectionSetup(), hasKey: !!key, keyHint: key ? key.slice(-4) : undefined, keyFromEnv: !saved && !!env };
+  };
+  const setConnection = async (setup: ConnectionSetup) => {
+    const g = vscode.ConfigurationTarget.Global;
+    await cfg().update('cli.useApiKey', setup === 'cliKey', g);
+    await cfg().update('backend', setup === 'sdk' ? 'sdk' : 'cli', g);
+    await applyCliAuth();
+    if (setup !== 'cliLogin' && !(await connectionInfo()).hasKey) await setSdkKey();
+    if (setup !== 'sdk') void cli.refresh();
+    scheduleAccount();
+  };
+  const clearKey = async () => {
+    await context.secrets.delete(SDK_KEY);
+    await applyCliAuth();
+    void refreshBackend();
+    planUsage.invalidate();
+    scheduleAccount();
+  };
+
+  // ---- Cursor plan usage (Included / Auto / API / On-Demand) ----
+  const planUsage = new PlanUsageService(storedKey, log);
+  let planState: PlanUsageState | undefined;
+  const refreshPlan = (force = false) => {
+    void planUsage.get(force).then((res) => {
+      const next: PlanUsageState = res.ok ? { status: 'ok', usage: res.usage } : { status: res.reason, message: res.message };
+      if (JSON.stringify(next) === JSON.stringify(planState)) return;
+      planState = next;
+      scheduleAccount();
+    });
   };
 
   const installSdk = async () => {
@@ -249,6 +297,8 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     const status = activeStatus();
     const sdkMode = useSdk();
     const about = sdkMode ? undefined : await cli.about();
+    const connection = await connectionInfo();
+    refreshPlan();
     const active = mgr.activeTab;
     sessionsBridge.post({
       type: 'account/state',
@@ -273,6 +323,8 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
         week: ledger.week(),
         dailyBudget: Math.max(0, cfg().get<number>('usage.dailyTokenBudget', 0)),
       },
+      plan: planState ?? { status: 'loading' },
+      connection,
     });
   };
 
@@ -432,6 +484,18 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
       case 'auth/logout':
         void logout();
         break;
+      case 'connection/setup':
+        void setConnection(msg.setup);
+        break;
+      case 'apiKey/clear':
+        void clearKey();
+        break;
+      case 'link/open': {
+        // Only Cursor's own pages: the URL comes from the webview.
+        const uri = vscode.Uri.parse(msg.url);
+        if (uri.scheme === 'https' && (uri.authority === 'cursor.com' || uri.authority.endsWith('.cursor.com'))) void vscode.env.openExternal(uri);
+        break;
+      }
       case 'auth/login':
       case 'cli/refresh':
       case 'settings/open':
@@ -685,11 +749,13 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     }),
     vscode.commands.registerCommand('cursorAgent.showHistory', showSessions),
     vscode.commands.registerCommand('cursorAgent.focusSessions', () => sessionsBridge.reveal()),
-    vscode.commands.registerCommand('cursorAgent.openSettings', () =>
-      vscode.commands.executeCommand('workbench.action.openSettings', 'cursorAgent'),
-    ),
+    vscode.commands.registerCommand('cursorAgent.openSettings', async () => {
+      await sessionsBridge.reveal();
+      sessionsBridge.post({ type: 'settings/focus' });
+    }),
     vscode.commands.registerCommand('cursorAgent.newGroup', newGroup),
     vscode.commands.registerCommand('cursorAgent.refreshAccount', () => {
+      refreshPlan(true);
       void refreshBackend()
         .then(() => (useSdk() ? undefined : cli.about(true)))
         .then(() => pushAccount());
@@ -712,6 +778,10 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('cursorAgent.cliPath')) void cli.refresh();
       if (e.affectsConfiguration('cursorAgent.usage.dailyTokenBudget')) scheduleAccount();
+      if (e.affectsConfiguration('cursorAgent.cli.useApiKey')) {
+        void applyCliAuth().then(() => cli.refresh());
+        scheduleAccount();
+      }
       if (e.affectsConfiguration('cursorAgent.backend') || e.affectsConfiguration('cursorAgent.sdk.nodePath')) {
         log(`[backend] switched to ${useSdk() ? 'sdk' : 'cli'}`);
         void refreshBackend().then((s) => {
@@ -723,9 +793,8 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     }),
     vscode.commands.registerCommand('cursorAgent.setSdkApiKey', setSdkKey),
     vscode.commands.registerCommand('cursorAgent.clearSdkApiKey', async () => {
-      await context.secrets.delete(SDK_KEY);
-      void sdk.refresh();
-      void vscode.window.showInformationMessage('Cursor SDK API key removed.');
+      await clearKey();
+      void vscode.window.showInformationMessage('Cursor API key removed.');
     }),
     vscode.commands.registerCommand('cursorAgent.installSdk', installSdk),
     fileIndex,
@@ -754,7 +823,7 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
   context.subscriptions.push(lens, vscode.languages.registerCodeLensProvider({ scheme: 'file' }, lens), vscode.languages.registerCodeLensProvider({ scheme: 'untitled' }, lens));
 
   log('Cursor Agent activated');
-  const ready = useSdk() ? Promise.all([cli.refresh(), sdk.refresh()]) : cli.refresh();
+  const ready = applyCliAuth().then((): Promise<unknown> => (useSdk() ? Promise.all([cli.refresh(), sdk.refresh()]) : cli.refresh()));
   return { manager: mgr, changes, history: store, code, sdk, cliReady: () => ready };
 }
 

@@ -2,7 +2,7 @@
  * Session Manager fixture harness (webview-ui/sessions-harness.html). Fakes the host:
  * rows in every status, groups, account states, budget bars. Not shipped.
  */
-import type { AccountInfo, HostMessage, SessionGroup, SessionRow, UsageSummary, WebviewMessage } from '../../../src/shared/protocol';
+import type { AccountInfo, ConnectionInfo, HostMessage, PlanUsageState, SessionGroup, SessionRow, UsageSummary, WebviewMessage } from '../../../src/shared/protocol';
 
 const now = Date.now();
 const MIN = 60_000;
@@ -49,7 +49,20 @@ function post(msg: HostMessage) {
   window.postMessage(msg, '*');
 }
 const pushRows = () => post({ type: 'sessions/state', rows, groups, activeId });
-const pushAccount = () => post({ type: 'account/state', account, usage: usage(budget) });
+const plan: PlanUsageState = {
+  status: 'ok',
+  usage: {
+    planName: 'Pro',
+    includedPct: 20.3,
+    autoPct: 16.8,
+    apiPct: 90.6,
+    onDemand: { enabled: false },
+    cycleEnd: now + 24 * D,
+    message: "You've used 20% of your included total usage",
+  },
+};
+let connection: ConnectionInfo = { setup: 'cliLogin', hasKey: false };
+const pushAccount = () => post({ type: 'account/state', account, usage: usage(budget), plan, connection });
 
 (window as unknown as { acquireVsCodeApi: () => unknown }).acquireVsCodeApi = () => ({
   getState: () => undefined,
@@ -100,6 +113,18 @@ const pushAccount = () => post({ type: 'account/state', account, usage: usage(bu
       case 'group/toggle':
         groups = groups.map((g) => (g.id === msg.id ? { ...g, collapsed: msg.collapsed } : g));
         pushRows();
+        break;
+      case 'connection/setup':
+        connection = { ...connection, setup: msg.setup };
+        pushAccount();
+        break;
+      case 'sdk/setKey':
+        connection = { ...connection, hasKey: true, keyHint: 'a1b2' };
+        pushAccount();
+        break;
+      case 'apiKey/clear':
+        connection = { ...connection, hasKey: false, keyHint: undefined };
+        pushAccount();
         break;
       case 'account/details':
       case 'auth/logout':

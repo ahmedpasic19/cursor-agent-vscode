@@ -23,8 +23,17 @@ export function killTree(pid: number | undefined): Promise<void> {
   });
 }
 
+/**
+ * Extra environment for every CLI process. The "CLI + API key" setup puts CURSOR_API_KEY here
+ * (env, not --api-key, so the key never shows up in process listings or logs).
+ */
+let authEnv: Record<string, string> = {};
+export function setCliAuthEnv(env: Record<string, string>): void {
+  authEnv = env;
+}
+
 export function spawnCli(cli: CliInfo, args: string[], cwd: string): ChildProcess {
-  const env = { ...process.env, ...(cli.env ?? {}) };
+  const env = { ...process.env, ...(cli.env ?? {}), ...authEnv };
   if (cli.shell) {
     const line = [cli.command, ...cli.prefixArgs, ...args].map(quoteCmdArg).join(' ');
     return spawn(line, { cwd, env, shell: true, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });

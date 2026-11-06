@@ -4,6 +4,8 @@
  * No vscode imports (unit-tested).
  */
 import type { HistoryItem, RunRecord, SessionRow, SessionStatus, TranscriptItem } from '../shared/protocol';
+import { chipLabel, expandChipTokens } from '../shared/inlineChips';
+import type { ContextChip } from '../shared/protocol';
 
 /** The parts of a TabSession the index needs. */
 export interface LiveTab {
@@ -61,7 +63,7 @@ export class SessionIndex {
       createdAt: tab.createdAt,
       updatedAt: tab.updatedAt,
       messageCount: users.length,
-      preview: (users[0] as { text: string }).text.slice(0, 300),
+      preview: previewOf(users[0] as { text: string; chips?: ContextChip[] }),
       open: true,
       lastStatus: lastRun(tab.transcript)?.status,
     });
@@ -105,4 +107,8 @@ export class SessionIndex {
     }
     return rows.sort((a, b) => b.updatedAt - a.updatedAt);
   }
+}
+
+function previewOf(u: { text: string; chips?: ContextChip[] }): string {
+  return expandChipTokens(u.text, u.chips, chipLabel).slice(0, 300);
 }
