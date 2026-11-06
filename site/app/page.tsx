@@ -2,7 +2,7 @@ import { ChatRail } from "@/components/ChatRail";
 import { Command } from "@/components/Command";
 import { EditorDiagram } from "@/components/EditorDiagram";
 import { OsTabs } from "@/components/OsTabs";
-import { extensionVersion, REPO } from "@/lib/version";
+import { EXTENSION_VERSION, REPO } from "@/lib/version";
 
 const CAPABILITIES = [
   {
@@ -73,7 +73,7 @@ const CAPABILITIES = [
 ];
 
 export default function Page() {
-  const version = extensionVersion();
+  const version = EXTENSION_VERSION;
 
   return (
     <>
