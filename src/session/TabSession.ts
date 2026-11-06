@@ -6,7 +6,7 @@ import type { AgentEvent, Mode, RunOutcome } from '../shared/events';
 import { addChip, type AddResult } from '../context/chips';
 import type { ContextChip, PromptCommandInput, RunRecord, TabSnapshot, TranscriptItem, UserMessage } from '../shared/protocol';
 import { compactEvents } from '../shared/transcript';
-import { buildPrompt, extraRoots, titleFrom } from './promptBuilder';
+import { buildPrompt, chipsForAttachedContext, extraRoots, titleFrom } from './promptBuilder';
 
 /** Placeholder while a run is starting (taking its checkpoint). */
 const PENDING_HANDLE: RunHandle = { done: new Promise(() => {}), stop: () => {} };
@@ -395,7 +395,8 @@ export class TabSession {
       cwd: this.cwd,
     });
     const { workspaceRoots, ...runSettings } = settings;
-    const addDirs = extraRoots(this.cwd, workspaceRoots ?? [], user.chips ?? []);
+    const chipsForRoots = user.chips?.length ? chipsForAttachedContext(user.chips) : [];
+    const addDirs = extraRoots(this.cwd, workspaceRoots ?? [], chipsForRoots);
 
     active.handle = backend.run(
       {

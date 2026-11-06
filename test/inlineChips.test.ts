@@ -48,6 +48,8 @@ describe('inline chip tokens', () => {
     const prompt = buildPrompt({ text, mode: 'agent', chips: [sel, file], cwd: 'C:/ws' });
     expect(prompt).toContain('<selection path="src/main.rs" lines="158-167" language="rust">');
     expect(prompt).toContain('<user_message>\nSome test text is written @src/main.rs:158-167 and then');
+    // Whole-file chip is omitted when a selection for the same path is attached (snippet is enough).
+    expect(prompt).not.toContain('<file path="src/main.rs"');
     expect(prompt).not.toMatch(/[\uE000\uE001]/);
   });
 

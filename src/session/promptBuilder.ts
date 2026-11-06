@@ -71,6 +71,17 @@ function attr(v: string): string {
   return v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
+/**
+ * Drops whole-file chips when a selection chip for the same file is already attached — the
+ * snapshot carries the relevant lines; `<file path="…"/>` would tell the model to read everything.
+ */
+export function chipsForAttachedContext(chips: ContextChip[]): ContextChip[] {
+  const selectionPaths = new Set(
+    chips.filter((c): c is Extract<ContextChip, { kind: 'selection' }> => c.kind === 'selection').map((c) => c.absPath.toLowerCase()),
+  );
+  return chips.filter((c) => !(c.kind === 'file' && !c.isFolder && selectionPaths.has(c.absPath.toLowerCase())));
+}
+
 /** Serializes chips as `<attached_context>` (PLAN.md §5.4). */
 export function serializeChips(chips: ContextChip[], cwd?: string): string {
   const parts: string[] = [];
@@ -116,10 +127,12 @@ export function serializeChips(chips: ContextChip[], cwd?: string): string {
 
 export function buildPrompt(input: PromptInput): string {
   const prefix = input.mode === 'agent' && input.sessionMode && input.sessionMode !== 'agent' ? SWITCH_TO_AGENT_PREFIX : '';
+  const allChips = input.chips ?? [];
   // Inline chip tokens become `@path:lines` mentions that point at the <attached_context> entries.
   const text = expandChipTokens(input.text, input.chips);
-  if (!input.chips?.length) return prefix + text;
-  return `${prefix}${serializeChips(input.chips, input.cwd)}\n\n<user_message>\n${text}\n</user_message>`;
+  if (!allChips.length) return prefix + text;
+  const attached = chipsForAttachedContext(allChips);
+  return `${prefix}${serializeChips(attached, input.cwd)}\n\n<user_message>\n${text}\n</user_message>`;
 }
 
 export function titleFrom(text: string, max = 30): string {

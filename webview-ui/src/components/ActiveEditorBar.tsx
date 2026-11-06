@@ -53,18 +53,21 @@ export function ActiveEditorBar({ active, chips, disabled }: Props) {
           <span className="active-pill-range">{rangeLabel(active)}</span>
         </button>
       )}
-      <button
-        type="button"
-        className={`active-pill${fileIn ? ' is-added' : ''}`}
-        disabled={fileIn}
-        title={fileIn ? `${active.path} is already attached` : `Add ${active.path} to the chat`}
-        onClick={() => send({ type: 'context/add', what: 'activeFile' })}
-      >
-        <span className="chip-icon" aria-hidden>
-          {fileIn ? '✓' : CHIP_ICON.file}
-        </span>
-        <span className="chip-label">{fileLabel(active)}</span>
-      </button>
+      {/* With a selection, only the line-range snapshot is offered (whole file would duplicate context). */}
+      {!selection && (
+        <button
+          type="button"
+          className={`active-pill${fileIn ? ' is-added' : ''}`}
+          disabled={fileIn}
+          title={fileIn ? `${active.path} is already attached` : `Add ${active.path} to the chat`}
+          onClick={() => send({ type: 'context/add', what: 'activeFile' })}
+        >
+          <span className="chip-icon" aria-hidden>
+            {fileIn ? '✓' : CHIP_ICON.file}
+          </span>
+          <span className="chip-label">{fileLabel(active)}</span>
+        </button>
+      )}
       <button
         type="button"
         className="active-dismiss"

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { addChip, chipLabel, type SelectionChip } from '../src/context/chips';
 import { fuzzyFilter, fuzzyScore, withFolders } from '../src/context/fuzzy';
 import type { ContextChip } from '../src/shared/protocol';
-import { buildPrompt, serializeChips, SWITCH_TO_AGENT_PREFIX } from '../src/session/promptBuilder';
+import { buildPrompt, chipsForAttachedContext, serializeChips, SWITCH_TO_AGENT_PREFIX } from '../src/session/promptBuilder';
 
 const LINES = Array.from({ length: 100 }, (_, i) => `L${i + 1}`);
 
@@ -86,6 +86,15 @@ describe('addChip: other kinds', () => {
 describe('promptBuilder', () => {
   it('sends plain text when there are no chips', () => {
     expect(buildPrompt({ text: 'hi', mode: 'ask' })).toBe('hi');
+  });
+
+  it('drops redundant file chips when a selection for the same file exists', () => {
+    const s = sel('src/x.ts', 1, 3);
+    const f: ContextChip = { id: 'f', kind: 'file', path: 'src/x.ts', absPath: s.absPath, isFolder: false };
+    expect(chipsForAttachedContext([s, f])).toEqual([s]);
+    const p = buildPrompt({ text: 'x', mode: 'ask', chips: [s, f] });
+    expect(p).toContain('<selection');
+    expect(p).not.toContain('<file path=');
   });
 
   it('serializes three chips from two files plus a terminal chip (PLAN.md §5.4 format)', () => {

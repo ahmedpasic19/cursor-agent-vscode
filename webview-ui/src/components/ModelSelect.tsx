@@ -1,17 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { ModelOption } from '../../../src/shared/protocol';
 import {
-  EFFORT_LABEL,
-  effortOf,
   familyLabelFromVariantLabel,
   familyRepresentativeId,
-  modelForEffort,
   parseModelId,
-  preferredEffort,
-} from '../effort';
+  representativeIdForFamilyGroup,
+} from '../modelId';
 import { modelDescription, recentModels, rememberModel } from '../modelInfo';
 import { RefreshIcon } from '../sessions/icons';
-import { EffortMeter } from './EffortMeter';
 import { OptionRow, Popover } from './Popover';
 
 interface Props {
@@ -62,7 +58,6 @@ export function ModelSelect({ models, value, openRequest, onChange, onRefresh }:
   const [active, setActive] = useState(0);
   const [showAll, setShowAll] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
-  const effortRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (openRequest > 0) setOpen(true);
@@ -152,25 +147,11 @@ export function ModelSelect({ models, value, openRequest, onChange, onRefresh }:
       arr.push(m);
     }
 
-    /** Mid-effort, non-fast id that stands for a family in the list. */
-    const representative = (group: ModelOption[]): string => {
-      const withTok = group.filter((m) => parseModelId(m.id).token !== undefined);
-      const rowModels = withTok.length > 0 ? withTok : group;
-      const rep = rowModels.reduce<string | undefined>((best, m) => {
-        const p = parseModelId(m.id);
-        if (!p.token) return best;
-        if (!best) return m.id;
-        const bRank = parseModelId(best).rank ?? 99;
-        return Math.abs((p.rank ?? 99) - 3) < Math.abs(bRank - 3) ? m.id : best;
-      }, undefined);
-      return rep ?? rowModels[0]!.id;
-    };
-
     const pushFamily = (group: ModelOption[], section?: string) => {
       const key = familyKeyOf(group[0]!.id);
       if (seenFamilyKeys.has(key)) return false;
       seenFamilyKeys.add(key);
-      const pickId = representative(group);
+      const pickId = representativeIdForFamilyGroup(group);
       out.push({ id: pickId, label: labelOf(pickId), description: modelDescription(pickId), section });
       return true;
     };
@@ -210,30 +191,13 @@ export function ModelSelect({ models, value, openRequest, onChange, onRefresh }:
       setActive(0);
       return;
     }
-    let nextId = o.id;
-    if (nextId !== undefined && !o.custom) {
-      const p = parseModelId(nextId);
-      if (p.token) {
-        const mapped = modelForEffort(models, nextId, preferredEffort());
-        if (mapped) nextId = mapped;
-      }
-    }
+    const nextId = o.id;
     rememberModel(nextId);
     onChange(nextId);
     setOpen(false);
   };
 
   const onKey = (e: KeyboardEvent) => {
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      const meter = effortRef.current;
-      if (meter && document.activeElement === listRef.current) {
-        e.preventDefault();
-        e.stopPropagation();
-        meter.focus();
-        meter.dispatchEvent(new KeyboardEvent('keydown', { key: e.key, bubbles: true }));
-      }
-      return;
-    }
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setActive((a) => Math.min(a + 1, options.length - 1));
@@ -255,8 +219,6 @@ export function ModelSelect({ models, value, openRequest, onChange, onRefresh }:
   };
 
   const currentDesc = modelDescription(value);
-  /** Claude Code writes the level next to the name, e.g. "Opus 5.5 Medium". */
-  const pillEffort = effortOf(models, value);
   const close = useCallback(() => setOpen(false), []);
 
   const footerHint =
@@ -265,14 +227,6 @@ export function ModelSelect({ models, value, openRequest, onChange, onRefresh }:
       : models.length
         ? `${models.length} models · type to filter`
         : 'Type a model id';
-
-  const onEffortChange = useCallback(
-    (mid: string) => {
-      rememberModel(mid);
-      onChange(mid);
-    },
-    [onChange],
-  );
 
   return (
     <div className="model-select">
@@ -284,7 +238,6 @@ export function ModelSelect({ models, value, openRequest, onChange, onRefresh }:
         aria-expanded={open}
       >
         <span className="model-label">{value ? labelOf(value) : 'Default model'}</span>
-        {pillEffort && <span className="model-effort">{EFFORT_LABEL[pillEffort]}</span>}
       </button>
       <Popover
         open={open}
@@ -305,7 +258,6 @@ export function ModelSelect({ models, value, openRequest, onChange, onRefresh }:
             </span>
           )
         }
-        secondaryFooter={<EffortMeter ref={effortRef} models={models} model={value} onChange={onEffortChange} />}
         footer={
           <>
             <span className="muted">{footerHint}</span>

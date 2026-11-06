@@ -1,6 +1,5 @@
 /** Small inline icons (no codicon font in the webview). 16×16, currentColor. */
 const box = { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true } as const;
-const effortBox = { width: 14, height: 14, viewBox: '0 0 14 14', fill: 'none', 'aria-hidden': true } as const;
 const stroke = { stroke: 'currentColor', strokeWidth: 1.3, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
 export const ChevronIcon = ({ open }: { open: boolean }) => (
@@ -120,12 +119,5 @@ export const GearIcon = () => (
       d="M8 1.8v1.6M8 12.6v1.6M14.2 8h-1.6M3.4 8H1.8M12.4 3.6l-1.1 1.1M4.7 11.3l-1.1 1.1M12.4 12.4l-1.1-1.1M4.7 4.7L3.6 3.6"
       {...stroke}
     />
-  </svg>
-);
-
-/** Effort meter: horizontal rail with two vertical ticks (Claude Code–style). */
-export const EffortIcon = () => (
-  <svg {...effortBox}>
-    <path d="M2 11.5h10M4.5 8.5v5M9.5 8.5v5" {...stroke} />
   </svg>
 );

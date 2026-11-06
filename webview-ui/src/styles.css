@@ -609,8 +609,18 @@ kbd {
   overflow: hidden;
 }
 .user-msg.collapsed .user-text {
-  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
-  mask-image: linear-gradient(to bottom, #000 55%, transparent);
+  position: relative;
+}
+/* Fade long messages without mask-image — masks interact badly with text selection (black blocks). */
+.user-msg.collapsed .user-text::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 44px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--vscode-input-background, var(--ca-surface)));
 }
 .user-more {
   position: absolute;
