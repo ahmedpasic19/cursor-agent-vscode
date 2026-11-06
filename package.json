@@ -1,12 +1,16 @@
 {
   "name": "cursor-agent-vscode",
   "displayName": "Cursor Agent",
-  "description": "Cursor's agent in a VS Code sidebar chat (personal use).",
+  "description": "Cursor's agent in a VS Code sidebar chat, laid out like Claude Code.",
   "version": "0.11.2",
   "publisher": "local",
   "icon": "media/logo.png",
-  "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ahmedpasic19/cursor-agent-vscode.git"
+  },
+  "homepage": "https://github.com/ahmedpasic19/cursor-agent-vscode#readme",
   "type": "module",
   "engines": {
     "vscode": "^1.100.0",

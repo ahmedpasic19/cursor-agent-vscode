@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { SESSION, type Event } from "@/lib/session-script";
 
 /** The cube, at icon size. */
@@ -58,7 +58,6 @@ function EventLine({ event }: { event: Event }) {
 
 export function ChatRail() {
   const [revealed, setRevealed] = useState(0);
-  const sentinels = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -95,8 +94,6 @@ export function ChatRail() {
       window.clearTimeout(opening);
     };
   }, []);
-
-  void sentinels;
 
   return (
     <div>

@@ -303,15 +303,6 @@ section {
   padding: clamp(3.5rem, 9vh, 6rem) 0 0;
 }
 
-/* Lit sections: raised a facet value, like the lighter face of the cube. */
-.lit {
-  background: var(--ink-lit);
-}
-
-.lit-inner {
-  padding-bottom: clamp(3.5rem, 9vh, 6rem);
-}
-
 /* ── Where it lives: the editor diagram ────────────────────────── */
 
 .diagram {

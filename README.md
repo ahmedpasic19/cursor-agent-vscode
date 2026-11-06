@@ -1,6 +1,9 @@
 # Cursor Agent for VS Code
 
-Personal-use extension that runs Cursor's agent CLI from VS Code, laid out like Claude Code:
+Runs Cursor's agent CLI from VS Code, laid out like Claude Code. MIT licensed — not on the
+Marketplace, so clone it and build it. The landing page is in [site/](site/).
+
+The layout:
 
 - **Right (secondary sidebar):** the **Cursor** chat, one session at a time. It sits next to Claude Code as a tab.
   (VS Code < 1.106 has no secondary-sidebar contributions; there the chat is a second view in the left container.)
