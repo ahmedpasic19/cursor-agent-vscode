@@ -2,7 +2,7 @@
   "name": "cursor-agent-vscode",
   "displayName": "Cursor Agent",
   "description": "Cursor's agent in a VS Code sidebar chat (personal use).",
-  "version": "0.11.1",
+  "version": "0.11.2",
   "publisher": "local",
   "icon": "media/logo.png",
   "private": true,
@@ -500,12 +500,6 @@
         "key": "ctrl+i",
         "mac": "cmd+i",
         "when": "!(editorTextFocus && editorHasSelection)"
-      },
-      {
-        "command": "cursorAgent.addSelectionToChat",
-        "key": "ctrl+l",
-        "mac": "cmd+l",
-        "when": "editorTextFocus && editorHasSelection"
       },
       {
         "command": "cursorAgent.addFileToChat",

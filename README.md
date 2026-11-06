@@ -14,7 +14,7 @@ Personal-use extension that runs Cursor's agent CLI from VS Code, laid out like 
 Context:
 
 - **Ctrl+I** (Cmd+I) with a selection adds it to the chat; with nothing selected it focuses the chat. An
-  *Add to Cursor (Ctrl+I)* CodeLens shows above the selection (`cursorAgent.selectionCodeLens`). Ctrl+L still works.
+  *Add to Cursor (Ctrl+I)* CodeLens shows above the selection (`cursorAgent.selectionCodeLens`). Ctrl+L in the editor is left to VS Code.
 - **Images:** paste a screenshot (Ctrl+V), drop an image, or *+ → Attach image*. Images are saved per chat and sent by
   path; the agent opens them with its read tool.
 - **Multi-root:** `@` searches every workspace folder; the other folders are passed to the agent with `--add-dir`.
