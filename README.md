@@ -22,6 +22,42 @@ Context:
 
 See PLAN.md, docs/CLI_NOTES.md and docs/NEXT_FEATURES_PLAN.md.
 
+## Cursor CLI
+
+The chat runs the [Cursor CLI](https://cursor.com/docs/cli/overview). Install it before you open the extension. `agent` must be on your PATH (`cursor-agent` is the same binary), then log in once with `agent login`.
+
+**macOS** (install, then add `~/.local/bin` to PATH)
+
+```bash
+curl https://cursor.com/install -fsS | bash
+```
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
+```
+
+**Linux** (install, then add `~/.local/bin` to PATH)
+
+```bash
+curl https://cursor.com/install -fsS | bash
+```
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+```
+
+**Windows (PowerShell)** (install, then add `%LOCALAPPDATA%\cursor-agent` to the user PATH)
+
+```powershell
+irm 'https://cursor.com/install?win32=true' | iex
+```
+
+```powershell
+$p = [Environment]::GetEnvironmentVariable("Path", "User"); if ($p -notlike "*$env:LOCALAPPDATA\cursor-agent*") { [Environment]::SetEnvironmentVariable("Path", "$p;$env:LOCALAPPDATA\cursor-agent", "User") }
+```
+
+Open a new terminal after the PATH change. `agent --version` should print a version.
+
 - Build: `npm run build`
 - Test: `npm test` (real-CLI e2e: `CURSOR_E2E=1 npx vitest run test/e2e.real.test.ts`)
 - Fixture harness: `npx vite --config webview-ui/vite.config.ts` then open `http://localhost:5173/harness.html` (lists every recorded + synthetic fixture, CLI states, Plan → Agent)
@@ -30,7 +66,7 @@ See PLAN.md, docs/CLI_NOTES.md and docs/NEXT_FEATURES_PLAN.md.
 
 ## Backends
 
-- **CLI (default):** `cursor-agent` with your Cursor subscription login.
+- **CLI (default):** `cursor-agent` with your Cursor subscription login. Install commands are in [Cursor CLI](#cursor-cli) above.
 - **SDK (optional):** set `cursorAgent.backend` to `sdk`, then run *Cursor Agent: Install SDK Backend* and
   *Cursor Agent: Set SDK API Key*. It's billed by usage and needs Node 22.13+. See `docs/SDK_NOTES.md`.
   Real-SDK e2e (opt-in): `CURSOR_SDK_E2E=1 CURSOR_API_KEY=… CURSOR_SDK_DIR=… npx vitest run test/e2e.sdk.real.test.ts`
