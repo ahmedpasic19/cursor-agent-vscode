@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import type { UserMessage as UserItem } from '../../../src/shared/protocol';
 import { chipIdsIn, splitChipTokens } from '../../../src/shared/inlineChips';
 import { RestoreIcon } from '../sessions/icons';
-import { ContextChips, InlineChip } from './ContextChips';
+import { ContextChips, ImageThumbs, InlineChip } from './ContextChips';
 
 interface Props {
   item: UserItem;
@@ -32,12 +32,15 @@ export function UserMessage({ item, restorable, running, onRestore }: Props) {
 
   // Chips not placed in the text (older chats, or attached without a position) go on top.
   const inline = new Set(chipIdsIn(item.text));
-  const loose = (item.chips ?? []).filter((c) => !inline.has(c.id));
+  const looseAll = (item.chips ?? []).filter((c) => !inline.has(c.id));
+  const images = looseAll.filter((c): c is Extract<typeof c, { kind: 'image' }> => c.kind === 'image');
+  const loose = looseAll.filter((c) => c.kind !== 'image');
   const parts = splitChipTokens(item.text, item.chips);
   const collapsed = overflows && !expanded;
 
   return (
     <div className={`user-msg${collapsed ? ' collapsed' : ''}`}>
+      <ImageThumbs images={images} readOnly />
       {(loose.length > 0 || item.mode !== 'agent') && (
         <div className="user-head">
           {loose.length > 0 && <ContextChips chips={loose} readOnly />}

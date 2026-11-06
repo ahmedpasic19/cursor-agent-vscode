@@ -108,3 +108,26 @@ export function InlineChip({ chip }: { chip: ContextChip }) {
     </button>
   );
 }
+
+type ImageChip = Extract<ContextChip, { kind: 'image' }>;
+
+/** Attached images as thumbnails (above the composer input and above sent messages), not chips. */
+export function ImageThumbs({ images, tabId, readOnly }: { images: ImageChip[]; tabId?: string; readOnly?: boolean }) {
+  if (!images.length) return null;
+  return (
+    <div className={`image-thumbs${readOnly ? ' readonly' : ''}`}>
+      {images.map((c) => (
+        <span key={c.id} className="image-thumb" title={chipTooltip(c)}>
+          <button className="image-thumb-open" onClick={() => openChip(c)} aria-label={`Open ${c.name}`}>
+            {c.thumb ? <img src={c.thumb} alt="" /> : <span className="glyph">{CHIP_ICON.image}</span>}
+          </button>
+          {!readOnly && tabId && (
+            <button className="image-thumb-remove" aria-label={`Remove ${c.name}`} onClick={() => send({ type: 'chip/remove', tabId, chipId: c.id })}>
+              ×
+            </button>
+          )}
+        </span>
+      ))}
+    </div>
+  );
+}

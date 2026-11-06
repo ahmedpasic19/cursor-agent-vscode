@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import type { Mode } from '../../../src/shared/events';
 import type { ContextChip, ModelOption } from '../../../src/shared/protocol';
 import { ArrowUpIcon, BranchIcon, FileIcon, PlusIcon, SlashIcon, StopIcon, WarnIcon } from '../sessions/icons';
@@ -6,7 +6,7 @@ import { useStore } from '../state/store';
 import { send } from '../vscode';
 import { attachImages, IMAGE_TYPES, imageFiles, imageUris } from '../images';
 import { chipIdsIn, chipToken, CHIP_TOKEN_RE } from '../../../src/shared/inlineChips';
-import { openChip } from './ContextChips';
+import { ImageThumbs, openChip } from './ContextChips';
 import { getCaret, render, serialize, setCaret } from './richInput';
 import { ModelSelect } from './ModelSelect';
 import { MODES, ModeSelect, nextMode } from './ModeSelect';
@@ -118,8 +118,9 @@ export function Composer(props: Props) {
       t = t.replace(tok, '');
       if (at < caret) caret = Math.max(at, caret - tok.length);
     }
+    // Images are not inline: they sit in a strip above the input.
     for (const c of chips) {
-      if (known.current.has(c.id)) continue;
+      if (c.kind === 'image' || known.current.has(c.id)) continue;
       known.current.add(c.id);
       caret = Math.min(caret, t.length);
       const pre = t.slice(0, caret);
@@ -325,34 +326,67 @@ export function Composer(props: Props) {
   // ---------- images: paste, drop, picker ----------
 
   const fileInput = useRef<HTMLInputElement>(null);
-  const [dragOver, setDragOver] = useState(false);
+  /** 'hint': a file drag without Shift (VS Code takes the drop); 'drop': Shift held, the panel accepts it. */
+  const [drag, setDrag] = useState<'hint' | 'drop'>();
   const addImages = (files: File[]) => {
     if (!tabId || !files.length) return;
     void attachImages(tabId, files).then((err) => err && showNotice('error', err));
   };
-  const hasDropData = (dt: DataTransfer) =>
-    [...dt.types].some((t) => t === 'Files' || t === 'text/uri-list' || t === 'application/vnd.code.uri-list');
-  const dropProps = {
-    onDragOver: (e: DragEvent) => {
+  const dropRef = useRef({ tabId, addImages, showNotice });
+  dropRef.current = { tabId, addImages, showNotice };
+  // Window-wide: VS Code only lets a file drop into a webview while Shift is held. Without Shift
+  // the webview sees the first drag events and then VS Code takes over, so we show a hint that
+  // fades once events stop; with Shift, the whole panel becomes a drop target.
+  useEffect(() => {
+    if (disabled) return;
+    const hasDropData = (dt: DataTransfer | null) =>
+      !!dt && [...dt.types].some((t) => t === 'Files' || t === 'text/uri-list' || t === 'application/vnd.code.uri-list');
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const clear = () => {
+      clearTimeout(timer);
+      setDrag(undefined);
+    };
+    const onOver = (e: globalThis.DragEvent) => {
       if (!hasDropData(e.dataTransfer)) return;
+      clearTimeout(timer);
+      if (e.shiftKey) {
+        e.preventDefault();
+        e.dataTransfer!.dropEffect = 'copy';
+        setDrag('drop');
+        timer = setTimeout(clear, 600);
+      } else {
+        setDrag('hint');
+        timer = setTimeout(clear, 3000);
+      }
+    };
+    const onLeave = (e: globalThis.DragEvent) => {
+      if (!e.relatedTarget) setDrag((d) => (d === 'drop' ? undefined : d));
+    };
+    const onDrop = (e: globalThis.DragEvent) => {
+      clear();
+      const dt = e.dataTransfer;
+      const { tabId: id, addImages: add, showNotice: notice } = dropRef.current;
+      if (!id || !hasDropData(dt)) return;
       e.preventDefault();
-      e.dataTransfer.dropEffect = 'copy';
-      setDragOver(true);
-    },
-    onDragLeave: (e: DragEvent) => {
-      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragOver(false);
-    },
-    onDrop: (e: DragEvent) => {
-      setDragOver(false);
-      if (!tabId || !hasDropData(e.dataTransfer)) return;
-      e.preventDefault();
-      const files = imageFiles(e.dataTransfer.files);
-      if (files.length) return addImages(files);
-      const uris = imageUris(e.dataTransfer);
-      if (uris.length) send({ type: 'image/addUris', tabId, uris });
-      else if (e.dataTransfer.files.length) showNotice('warning', 'Only images can be dropped here (PNG, JPEG, GIF, WebP, BMP). Use @ for other files.');
-    },
-  };
+      const files = imageFiles(dt!.files);
+      if (files.length) return add(files);
+      const uris = imageUris(dt!);
+      if (uris.length) send({ type: 'image/addUris', tabId: id, uris });
+      else if (dt!.files.length) notice('warning', 'Only images can be dropped here (PNG, JPEG, GIF, WebP, BMP). Use @ for other files.');
+    };
+    window.addEventListener('dragenter', onOver);
+    window.addEventListener('dragover', onOver);
+    window.addEventListener('dragleave', onLeave);
+    window.addEventListener('drop', onDrop);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('dragenter', onOver);
+      window.removeEventListener('dragover', onOver);
+      window.removeEventListener('dragleave', onLeave);
+      window.removeEventListener('drop', onDrop);
+    };
+  }, [disabled]);
+  const images = chips.filter((c): c is Extract<ContextChip, { kind: 'image' }> => c.kind === 'image');
 
   return (
     <div className="composer">
@@ -404,11 +438,10 @@ export function Composer(props: Props) {
         </div>
       )}
       <div
-        className={`composer-box${disabled ? ' disabled' : ''}${dragOver ? ' drag-over' : ''}`}
+        className={`composer-box${disabled ? ' disabled' : ''}${drag === 'drop' ? ' drag-over' : ''}`}
         onMouseDown={(e) => {
           if (e.target === e.currentTarget) setTimeout(() => ref.current?.focus(), 0);
         }}
-        {...dropProps}
       >
         <input
           ref={fileInput}
@@ -421,6 +454,7 @@ export function Composer(props: Props) {
             e.currentTarget.value = '';
           }}
         />
+        <ImageThumbs images={images} tabId={tabId} />
         <div
           ref={ref}
           className={`composer-input${text ? '' : ' is-empty'}`}
@@ -509,7 +543,7 @@ export function Composer(props: Props) {
                 <OptionRow
                   icon={<span className="glyph">🖼</span>}
                   label="Attach image"
-                  description="Or paste a screenshot / drop an image"
+                  description="Or paste a screenshot / hold Shift and drop an image"
                   onPick={() => {
                     setAttachOpen(false);
                     fileInput.current?.click();
@@ -577,6 +611,16 @@ export function Composer(props: Props) {
           )}
         </div>
       </div>
+      {drag === 'drop' && (
+        <div className="drop-overlay" aria-hidden>
+          <span className="drop-overlay-label">Drop to attach image</span>
+        </div>
+      )}
+      {drag === 'hint' && (
+        <div className="drop-hint" role="status">
+          Hold <kbd>Shift</kbd> while dragging to drop images here
+        </div>
+      )}
     </div>
   );
 }
