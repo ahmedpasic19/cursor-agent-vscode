@@ -50,7 +50,6 @@ export function ActiveEditorBar({ active, chips, disabled }: Props) {
             {selIn ? '✓' : CHIP_ICON.selection}
           </span>
           <span className="chip-label">{selectionLabel(active)}</span>
-          <span className="active-pill-range">{rangeLabel(active)}</span>
         </button>
       )}
       {/* With a selection, only the line-range snapshot is offered (whole file would duplicate context). */}
