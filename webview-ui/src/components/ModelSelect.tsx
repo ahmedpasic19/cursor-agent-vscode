@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { ModelOption } from '../../../src/shared/protocol';
 import {
+  EFFORT_LABEL,
+  effortOf,
   familyLabelFromVariantLabel,
   familyRepresentativeId,
   modelForEffort,
@@ -27,7 +29,27 @@ interface Opt {
   section?: string;
   /** True when row is "Use custom id" */
   custom?: boolean;
+  /** Non-model row: "Show all models". */
+  action?: 'showAll';
 }
+
+/** Cursor's own models, shown first and on their own, like the Cursor IDE picker. */
+const CURSOR_MODEL_RE = /^(auto|composer)/i;
+
+/**
+ * The families worth offering without asking: one row each, best match first. The full catalog
+ * (hundreds of ids) stays one click — or one keystroke — away.
+ */
+const FEATURED: RegExp[] = [
+  /opus/i,
+  /fable/i,
+  /sonnet/i,
+  /haiku/i,
+  /gpt/i,
+  /codex/i,
+  /gemini/i,
+  /grok/i,
+];
 
 /**
  * Claude Code–style model picker: a pill in the composer that opens a list of two-line rows
@@ -38,6 +60,7 @@ export function ModelSelect({ models, value, openRequest, onChange, onRefresh }:
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState('');
   const [active, setActive] = useState(0);
+  const [showAll, setShowAll] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const effortRef = useRef<HTMLDivElement>(null);
 
@@ -49,6 +72,7 @@ export function ModelSelect({ models, value, openRequest, onChange, onRefresh }:
     if (!open) return;
     setFilter('');
     setActive(0);
+    setShowAll(false);
     setTimeout(() => listRef.current?.focus(), 0);
   }, [open]);
 
@@ -74,6 +98,15 @@ export function ModelSelect({ models, value, openRequest, onChange, onRefresh }:
     },
     [idToLabel, models],
   );
+
+  const familyCount = useMemo(() => {
+    const keys = new Set<string>();
+    for (const m of models) {
+      const p = parseModelId(m.id);
+      keys.add(`${p.family}\0${p.fast ? '1' : '0'}`);
+    }
+    return keys.size;
+  }, [models]);
 
   const options = useMemo<Opt[]>(() => {
     const f = filter.trim().toLowerCase();
@@ -119,47 +152,64 @@ export function ModelSelect({ models, value, openRequest, onChange, onRefresh }:
       arr.push(m);
     }
 
-    let firstAll = true;
-    for (const [, group] of byFamily) {
-      const sample = group[0]!;
-      const key = familyKeyOf(sample.id);
-      if (seenFamilyKeys.has(key)) continue;
-      seenFamilyKeys.add(key);
-
+    /** Mid-effort, non-fast id that stands for a family in the list. */
+    const representative = (group: ModelOption[]): string => {
       const withTok = group.filter((m) => parseModelId(m.id).token !== undefined);
       const rowModels = withTok.length > 0 ? withTok : group;
       const rep = rowModels.reduce<string | undefined>((best, m) => {
         const p = parseModelId(m.id);
         if (!p.token) return best;
         if (!best) return m.id;
-        const br = parseModelId(best);
-        const mr = p.rank ?? 99;
-        const bRank = br.rank ?? 99;
-        return Math.abs(mr - 3) < Math.abs(bRank - 3) ? m.id : best;
+        const bRank = parseModelId(best).rank ?? 99;
+        return Math.abs((p.rank ?? 99) - 3) < Math.abs(bRank - 3) ? m.id : best;
       }, undefined);
-      const pickId = rep ?? rowModels[0]!.id;
+      return rep ?? rowModels[0]!.id;
+    };
 
-      const lbl = labelOf(pickId);
-      const desc = modelDescription(pickId);
-      const section = firstAll ? 'All models' : undefined;
-      firstAll = false;
-      out.push({ id: pickId, label: lbl, description: desc, section });
+    const pushFamily = (group: ModelOption[], section?: string) => {
+      const key = familyKeyOf(group[0]!.id);
+      if (seenFamilyKeys.has(key)) return false;
+      seenFamilyKeys.add(key);
+      const pickId = representative(group);
+      out.push({ id: pickId, label: labelOf(pickId), description: modelDescription(pickId), section });
+      return true;
+    };
+
+    const groups = [...byFamily.values()].filter((g) => !parseModelId(g[0]!.id).fast);
+
+    if (showAll) {
+      let first = true;
+      for (const group of byFamily.values()) {
+        if (pushFamily(group, first ? 'All models' : undefined)) first = false;
+      }
+      return out;
     }
 
+    // Short list, the way Cursor's own picker does it: its models, then a handful of the rest.
+    let firstCursor = true;
+    for (const group of groups) {
+      if (!CURSOR_MODEL_RE.test(group[0]!.id)) continue;
+      if (pushFamily(group, firstCursor ? 'Cursor Models' : undefined)) firstCursor = false;
+    }
+
+    let firstOther = true;
+    for (const re of FEATURED) {
+      const group = groups.find((g) => re.test(g[0]!.id));
+      if (!group) continue;
+      if (pushFamily(group, firstOther ? 'Other Models' : undefined)) firstOther = false;
+    }
+
+    out.push({ label: 'Show all models', description: `${familyCount} families · or type to filter`, action: 'showAll' });
     return out;
-  }, [models, filter, value, labelOf]);
-
-  const familyCount = useMemo(() => {
-    const keys = new Set<string>();
-    for (const m of models) {
-      const p = parseModelId(m.id);
-      keys.add(`${p.family}\0${p.fast ? '1' : '0'}`);
-    }
-    return keys.size;
-  }, [models]);
+  }, [models, filter, value, labelOf, showAll, familyCount]);
 
   const pick = (o?: Opt) => {
     if (!o) return;
+    if (o.action === 'showAll') {
+      setShowAll(true);
+      setActive(0);
+      return;
+    }
     let nextId = o.id;
     if (nextId !== undefined && !o.custom) {
       const p = parseModelId(nextId);
@@ -205,6 +255,8 @@ export function ModelSelect({ models, value, openRequest, onChange, onRefresh }:
   };
 
   const currentDesc = modelDescription(value);
+  /** Claude Code writes the level next to the name, e.g. "Opus 5.5 Medium". */
+  const pillEffort = effortOf(models, value);
   const close = useCallback(() => setOpen(false), []);
 
   const footerHint =
@@ -232,6 +284,7 @@ export function ModelSelect({ models, value, openRequest, onChange, onRefresh }:
         aria-expanded={open}
       >
         <span className="model-label">{value ? labelOf(value) : 'Default model'}</span>
+        {pillEffort && <span className="model-effort">{EFFORT_LABEL[pillEffort]}</span>}
       </button>
       <Popover
         open={open}
@@ -264,7 +317,7 @@ export function ModelSelect({ models, value, openRequest, onChange, onRefresh }:
       >
         <div className="option-list" role="listbox" tabIndex={0} ref={listRef} onKeyDown={onKey} aria-label="Models">
           {options.map((o, i) => (
-            <div key={`${o.id ?? '__default'}-${i}`}>
+            <div key={`${o.action ?? o.id ?? '__default'}-${i}`}>
               {o.section && <div className="option-section">{o.section}</div>}
               <OptionRow
                 label={o.label}

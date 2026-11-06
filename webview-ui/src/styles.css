@@ -310,68 +310,100 @@ kbd {
   justify-content: space-between;
   gap: 10px;
   width: 100%;
-  min-height: 26px;
-  padding: 2px 0;
+  min-height: 28px;
+  padding: 2px 4px;
+  border-radius: var(--ca-radius);
   font-size: 11px;
   color: var(--ca-text);
   outline: none;
 }
 .effort-row.disabled {
   color: var(--ca-muted);
-  pointer-events: none;
 }
 .effort-row:not(.disabled):focus-visible {
-  border-radius: var(--ca-radius);
   box-shadow: 0 0 0 1px var(--ca-accent);
 }
+/* The label is text only: clicking it must never move the slider. */
 .effort-label {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   white-space: nowrap;
   min-width: 0;
+  pointer-events: none;
+  user-select: none;
 }
-.effort-icon-wrap {
-  display: inline-flex;
+.effort-value {
   color: var(--ca-muted);
-  flex-shrink: 0;
 }
 .effort-track {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0;
+  flex: none;
 }
-.effort-dot {
-  width: 8px;
-  height: 8px;
+/* One cell per step: a blue lead-in up to the knob, dim dots after it. */
+.effort-step {
+  position: relative;
+  width: 15px;
+  height: 16px;
   padding: 0;
   margin: 0;
   border: none;
-  border-radius: 999px;
-  background: var(--ca-muted);
-  opacity: 0.35;
+  background: none;
   cursor: pointer;
-  flex-shrink: 0;
-  transition: opacity 0.12s ease, transform 0.12s ease;
+  flex: none;
 }
-.effort-row.disabled .effort-dot {
-  opacity: 0.2;
+.effort-step:disabled {
   cursor: default;
-  pointer-events: none;
 }
-.effort-dot.on {
-  min-width: 18px;
-  width: auto;
-  padding: 0 6px;
-  height: 8px;
-  border-radius: 999px;
+.effort-step::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 4px;
+  transform: translateY(-50%);
+  background: transparent;
+}
+.effort-step.is-fill::before,
+.effort-step.is-knob::before {
   background: var(--ca-accent);
+}
+.effort-step.is-knob::before {
+  right: 50%;
+}
+.effort-step.is-first::before {
+  border-top-left-radius: 999px;
+  border-bottom-left-radius: 999px;
+}
+.effort-step::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  background: var(--ca-muted);
+  opacity: 0.45;
+}
+.effort-step.is-knob::after {
+  width: 11px;
+  height: 11px;
+  background: var(--vscode-foreground, #fff);
   opacity: 1;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ca-accent) 70%, transparent);
 }
-.effort-dot:not(:disabled):hover {
-  opacity: 0.7;
+.effort-row.disabled .effort-step::after {
+  opacity: 0.25;
 }
-.effort-dot.on:not(:disabled):hover {
+.effort-step:not(:disabled):hover::after {
+  opacity: 0.8;
+}
+.effort-step.is-knob:not(:disabled):hover::after {
   opacity: 1;
 }
 .popover-search {
@@ -1526,6 +1558,11 @@ body.vscode-high-contrast .composer-box:focus-within {
 .model-select {
   margin-left: 4px;
 }
+.model-effort {
+  margin-left: 4px;
+  color: var(--ca-muted);
+  flex: none;
+}
 .model-label {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1650,39 +1687,38 @@ body.vscode-high-contrast .composer-box:focus-within {
   font-size: 10.5px;
 }
 
-/* ---------- active editor ("looking at") pills above the composer ---------- */
+/* ---------- active editor pills, inside the composer's bottom bar ---------- */
 .active-editor {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 6px;
+  gap: 3px;
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  margin: 0 2px;
   cursor: default;
-}
-.active-editor-lead {
-  font-size: 10.5px;
-  color: var(--ca-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 .active-pill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  max-width: 100%;
+  max-width: 150px;
   min-width: 0;
   padding: 0 6px;
-  border: 1px dashed var(--ca-border);
+  border: none;
   border-radius: var(--ca-radius);
   background: transparent;
   color: var(--ca-muted);
   font-size: 11px;
-  line-height: 18px;
+  line-height: 22px;
   cursor: pointer;
 }
+.active-pill .chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .active-pill:hover:not(:disabled) {
-  border-style: solid;
-  border-color: var(--ca-border-strong);
   background: var(--ca-hover);
   color: var(--ca-text);
 }
@@ -1698,6 +1734,26 @@ body.vscode-high-contrast .composer-box:focus-within {
   font-family: var(--ca-mono);
   font-size: 10px;
   opacity: 0.7;
+}
+.active-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: var(--ca-muted);
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  flex: none;
+}
+.active-dismiss:hover {
+  background: var(--ca-hover);
+  color: var(--ca-text);
 }
 
 /* ---------- attached images (thumbnails, not chips) + Shift-drag ---------- */
@@ -1779,25 +1835,22 @@ body.vscode-high-contrast .composer-box:focus-within {
   font-size: 12px;
 }
 .drop-hint {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 2px);
-  z-index: 1000;
-  transform: translateX(-50%);
-  max-width: calc(100% - 24px);
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 6px 12px;
-  border-radius: var(--ca-radius);
-  border: 1px solid var(--ca-border-strong);
+  border-top: 1px solid var(--ca-border);
   background: var(--vscode-editorWidget-background, var(--ca-surface));
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  color: var(--ca-text);
   font-size: 12px;
-  white-space: nowrap;
   pointer-events: none;
 }
-.drop-hint kbd {
-  padding: 0 4px;
-  border: 1px solid var(--ca-border-strong);
-  border-radius: 3px;
-  font-family: var(--vscode-font-family);
-  font-size: 11px;
+.drop-hint-icon {
+  color: var(--ca-muted);
+  flex: none;
 }

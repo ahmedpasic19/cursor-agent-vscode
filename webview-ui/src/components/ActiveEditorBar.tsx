@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { ActiveEditor, ContextChip } from '../../../src/shared/protocol';
 import { fileAttached, fileLabel, hasSelection, rangeLabel, selectionAttached, selectionLabel } from '../../../src/shared/activeEditor';
 import { send } from '../vscode';
@@ -11,21 +12,28 @@ interface Props {
   disabled?: boolean;
 }
 
+/** Identity of what is on screen: dismissing is undone as soon as this changes. */
+const keyOf = (a: ActiveEditor) => `${a.absPath}|${a.startLine ?? ''}-${a.endLine ?? ''}|${a.selections ?? ''}`;
+
 /**
- * What the user is looking at right now: the active file and its selection, shown above the
- * composer. Clicking a pill attaches it exactly as Ctrl+I does (the host runs the same command).
+ * What the user is looking at right now, shown as Claude Code shows it: small pills inside the
+ * composer's bottom bar, with no leading label and an × to dismiss. Clicking a pill attaches it
+ * exactly as Ctrl+I does (the host runs the same command).
  */
 export function ActiveEditorBar({ active, chips, disabled }: Props) {
-  if (!active || disabled) return null;
+  const [dismissed, setDismissed] = useState<string>();
+  const key = active ? keyOf(active) : undefined;
+  useEffect(() => {
+    setDismissed((d) => (d === key ? d : undefined));
+  }, [key]);
+
+  if (!active || disabled || dismissed === key) return null;
   const selection = hasSelection(active);
   const selIn = selectionAttached(active, chips);
   const fileIn = fileAttached(active, chips);
 
   return (
     <div className="active-editor" role="group" aria-label="Open in the editor">
-      <span className="active-editor-lead" aria-hidden>
-        Looking at
-      </span>
       {selection && (
         <button
           type="button"
@@ -56,6 +64,15 @@ export function ActiveEditorBar({ active, chips, disabled }: Props) {
           {fileIn ? '✓' : CHIP_ICON.file}
         </span>
         <span className="chip-label">{fileLabel(active)}</span>
+      </button>
+      <button
+        type="button"
+        className="active-dismiss"
+        title="Hide what you are looking at"
+        aria-label="Hide what you are looking at"
+        onClick={() => setDismissed(key)}
+      >
+        ✕
       </button>
     </div>
   );

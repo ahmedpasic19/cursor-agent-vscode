@@ -1,7 +1,17 @@
 import type { ModelOption } from '../../src/shared/protocol';
 
-export type Effort = 'low' | 'medium' | 'high' | 'max';
-export const EFFORTS: Effort[] = ['low', 'medium', 'high', 'max'];
+export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+/** The five steps Claude Code shows on its effort slider, lowest first. */
+export const EFFORTS: Effort[] = ['low', 'medium', 'high', 'xhigh', 'max'];
+
+/** How each step is written in the UI (pill and slider), as Claude Code writes it. */
+export const EFFORT_LABEL: Record<Effort, string> = {
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+  xhigh: 'XHigh',
+  max: 'Max',
+};
 
 const EFFORT_KEY = 'cursorAgent.effort';
 
@@ -89,6 +99,7 @@ const TARGET_RANK: Record<Effort, number> = {
   low: 2,
   medium: 3,
   high: 4,
+  xhigh: 5,
   max: 6,
 };
 
@@ -128,6 +139,7 @@ export function effortLadder(tokens: string[]): Record<Effort, string | undefine
     low: nearestToken(uniq, TARGET_RANK.low),
     medium: nearestToken(uniq, TARGET_RANK.medium),
     high: nearestToken(uniq, TARGET_RANK.high),
+    xhigh: nearestToken(uniq, TARGET_RANK.xhigh),
     max: nearestToken(uniq, TARGET_RANK.max),
   };
 }

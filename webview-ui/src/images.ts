@@ -50,8 +50,10 @@ export async function attachImages(tabId: string, files: File[]): Promise<string
   return error;
 }
 
-/** file:// image URIs from a VS Code explorer drag (`text/uri-list`). */
-export function imageUris(dt: DataTransfer): string[] {
+const IMAGE_EXT_RE = /\.(png|jpe?g|gif|webp|bmp)$/i;
+
+/** Every file:// URI in a VS Code explorer / OS drag (`text/uri-list`). */
+export function droppedUris(dt: DataTransfer): string[] {
   const raw = dt.getData('text/uri-list') || dt.getData('application/vnd.code.uri-list');
   if (!raw) return [];
   let list: string[];
@@ -60,5 +62,15 @@ export function imageUris(dt: DataTransfer): string[] {
   } catch {
     list = raw.split(/\r?\n/);
   }
-  return list.map((s) => s.trim()).filter((s) => s.startsWith('file:') && /\.(png|jpe?g|gif|webp|bmp)$/i.test(s));
+  return list.map((s) => s.trim()).filter((s) => s.startsWith('file:'));
+}
+
+/** Of those, the images (attached in place, not copied). */
+export function imageUris(dt: DataTransfer): string[] {
+  return droppedUris(dt).filter((s) => IMAGE_EXT_RE.test(s));
+}
+
+/** Of those, everything else: attached as file chips. */
+export function fileUris(dt: DataTransfer): string[] {
+  return droppedUris(dt).filter((s) => !IMAGE_EXT_RE.test(s));
 }

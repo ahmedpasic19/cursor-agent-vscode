@@ -4,7 +4,7 @@ import type { AgentCommand, ContextChip, ModelOption } from '../../../src/shared
 import { ArrowUpIcon, BranchIcon, FileIcon, PlusIcon, SlashIcon, StopIcon, WarnIcon } from '../sessions/icons';
 import { useStore } from '../state/store';
 import { send } from '../vscode';
-import { attachImages, IMAGE_TYPES, imageFiles, imageUris } from '../images';
+import { attachImages, fileUris, IMAGE_TYPES, imageFiles, imageUris } from '../images';
 import { chipIdsIn, chipToken, CHIP_TOKEN_RE } from '../../../src/shared/inlineChips';
 import { ActiveEditorBar } from './ActiveEditorBar';
 import { ImageThumbs, openChip } from './ContextChips';
@@ -394,9 +394,12 @@ export function Composer(props: Props) {
       e.preventDefault();
       const files = imageFiles(dt!.files);
       if (files.length) return add(files);
-      const uris = imageUris(dt!);
-      if (uris.length) send({ type: 'image/addUris', tabId: id, uris });
-      else if (dt!.files.length) notice('warning', 'Only images can be dropped here (PNG, JPEG, GIF, WebP, BMP). Use @ for other files.');
+      const images = imageUris(dt!);
+      const others = fileUris(dt!);
+      if (images.length) send({ type: 'image/addUris', tabId: id, uris: images.slice(0, 20) });
+      if (others.length) send({ type: 'context/addUris', tabId: id, uris: others.slice(0, 20) });
+      else if (!images.length && dt!.files.length)
+        notice('warning', 'That could not be attached. Drag files from the Explorer, or use @ to attach by name.');
     };
     window.addEventListener('dragenter', onOver);
     window.addEventListener('dragover', onOver);
@@ -516,7 +519,6 @@ export function Composer(props: Props) {
             e.currentTarget.value = '';
           }}
         />
-        <ActiveEditorBar active={activeEditor} chips={chips} disabled={disabled} />
         <ImageThumbs images={images} tabId={tabId} />
         <div
           ref={ref}
@@ -662,6 +664,7 @@ export function Composer(props: Props) {
             </span>
           )}
           <span className="spacer" />
+          <ActiveEditorBar active={activeEditor} chips={chips} disabled={disabled} />
           <ModeSelect
             mode={mode}
             modesSupported={modesSupported}
@@ -683,12 +686,15 @@ export function Composer(props: Props) {
       </div>
       {drag === 'drop' && (
         <div className="drop-overlay" aria-hidden>
-          <span className="drop-overlay-label">Drop to attach image</span>
+          <span className="drop-overlay-label">Drop to attach as context</span>
         </div>
       )}
-      {drag === 'hint' && (
+      {drag && (
         <div className="drop-hint" role="status">
-          Hold <kbd>Shift</kbd> while dragging to drop images here
+          <span className="drop-hint-icon" aria-hidden>
+            ⓘ
+          </span>
+          Hold Shift while dragging to drop files into Cursor Agent
         </div>
       )}
     </div>

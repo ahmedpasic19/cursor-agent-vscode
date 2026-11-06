@@ -399,6 +399,8 @@ export const WebviewMessageSchema = z.discriminatedUnion('type', [
   }),
   /** Images dragged from the VS Code explorer (file:// URIs); attached in place, not copied. */
   z.object({ type: z.literal('image/addUris'), tabId: z.string(), uris: z.array(z.string()).max(20) }),
+  /** Files/folders dragged in from the explorer or the OS (file:// URIs); attached as file chips. */
+  z.object({ type: z.literal('context/addUris'), tabId: z.string(), uris: z.array(z.string()).max(20) }),
   /** /clear: start a new CLI session in the same tab. */
   z.object({ type: z.literal('tab/clear'), tabId: z.string() }),
   z.object({ type: z.literal('tab/setModel'), tabId: z.string(), model: z.string().optional() }),

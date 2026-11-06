@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useMemo, type KeyboardEvent } from 'react';
 import type { ModelOption } from '../../../src/shared/protocol';
 import {
+  EFFORT_LABEL,
   EFFORTS,
   effortOf,
   modelForEffort,
@@ -8,7 +9,6 @@ import {
   rememberEffort,
   type Effort,
 } from '../effort';
-import { EffortIcon } from '../sessions/icons';
 
 interface Props {
   models: ModelOption[];
@@ -17,13 +17,11 @@ interface Props {
   onChange(model: string): void;
 }
 
-const EFFORT_LABEL: Record<Effort, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  max: 'Max',
-};
-
+/**
+ * Claude Code's effort slider: a five-step track (Low → Max) with a filled lead-in and a knob on
+ * the current step. Only the track is clickable — the "Effort (…)" label is inert, so a click on
+ * the text never changes the level.
+ */
 export const EffortMeter = forwardRef<HTMLDivElement, Props>(function EffortMeter({ models, model, onChange }, ref) {
   const parsed = model ? parseModelId(model) : undefined;
   const tokensLen = useMemo(() => {
@@ -40,6 +38,7 @@ export const EffortMeter = forwardRef<HTMLDivElement, Props>(function EffortMete
   const current = effortOf(models, model);
   const shownStep = disabled ? 'medium' : current ?? 'medium';
   const labelText = disabled ? '—' : EFFORT_LABEL[shownStep];
+  const currentIdx = EFFORTS.indexOf(shownStep);
 
   const pick = useCallback(
     (e: Effort) => {
@@ -55,7 +54,7 @@ export const EffortMeter = forwardRef<HTMLDivElement, Props>(function EffortMete
 
   const onKeyDown = (ev: KeyboardEvent) => {
     if (disabled || !model) return;
-    const idx = EFFORTS.indexOf(shownStep);
+    const idx = currentIdx;
     if (ev.key === 'ArrowLeft' && idx > 0) {
       ev.preventDefault();
       ev.stopPropagation();
@@ -75,7 +74,7 @@ export const EffortMeter = forwardRef<HTMLDivElement, Props>(function EffortMete
         : 'Effort not available for this model'
     : undefined;
 
-  const ariaNow = disabled ? 0 : EFFORTS.indexOf(shownStep) + 1;
+  const ariaNow = disabled ? 0 : currentIdx + 1;
 
   return (
     <div
@@ -84,29 +83,27 @@ export const EffortMeter = forwardRef<HTMLDivElement, Props>(function EffortMete
       title={tooltip}
       role="slider"
       aria-disabled={disabled}
+      aria-label="Effort"
       aria-valuemin={1}
-      aria-valuemax={4}
+      aria-valuemax={EFFORTS.length}
       aria-valuenow={ariaNow}
       aria-valuetext={labelText}
       tabIndex={disabled ? -1 : 0}
       onKeyDown={onKeyDown}
     >
-      <span className="effort-label">
-        <span className="effort-icon-wrap" aria-hidden>
-          <EffortIcon />
-        </span>
-        Effort ({labelText})
+      <span className="effort-label" aria-hidden>
+        Effort <span className="effort-value">({labelText})</span>
       </span>
       <div className="effort-track" role="presentation">
-        {EFFORTS.map((step) => {
-          const on = !disabled && step === shownStep;
+        {EFFORTS.map((step, i) => {
+          const state = disabled ? 'rest' : i < currentIdx ? 'fill' : i === currentIdx ? 'knob' : 'rest';
           return (
             <button
               key={step}
               type="button"
-              className={`effort-dot${on ? ' on' : ''}`}
+              className={`effort-step is-${state}${i === 0 ? ' is-first' : ''}`}
               aria-label={`${EFFORT_LABEL[step]} effort`}
-              aria-current={on || undefined}
+              aria-current={state === 'knob' || undefined}
               disabled={disabled}
               onClick={() => pick(step)}
               onMouseDown={(e) => e.preventDefault()}

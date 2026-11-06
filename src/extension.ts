@@ -694,6 +694,23 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
         })();
         break;
       }
+      case 'context/addUris': {
+        const tab = mgr.getTab(msg.tabId);
+        if (!tab) break;
+        void (async () => {
+          for (const u of msg.uris) {
+            try {
+              const uri = vscode.Uri.parse(u, true);
+              if (uri.scheme !== 'file') continue;
+              const chip = await fileChip(uri);
+              if (chip) tab.addChip(chip, maxChipLines());
+            } catch {
+              /* unreadable drop target: skip it */
+            }
+          }
+        })();
+        break;
+      }
       case 'tab/clear':
         mgr.getTab(msg.tabId)?.clear();
         break;
