@@ -651,6 +651,19 @@
           },
           "default": [],
           "description": "Local plugin folders passed to every run with --plugin-dir."
+        },
+        "cursorAgent.skills.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Discover Cursor skills and custom slash commands for the / menu and prompt expansion."
+        },
+        "cursorAgent.skills.extraDirs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Extra directories to scan for SKILL.md folders (absolute paths, or relative to $HOME when not absolute)."
         }
       }
     }

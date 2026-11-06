@@ -22,6 +22,8 @@ Context:
 - **Multi-root:** `@` searches every workspace folder; the other folders are passed to the agent with `--add-dir`.
   Checkpoints (Revert) cover only the folder the chat runs in.
 
+Skills and custom slash prompts from `~/.cursor/skills`, `~/.cursor/commands`, plugins, and project `.cursor` / `.claude` folders appear in the composer **`/` menu** (filter as you type). Settings: `cursorAgent.skills.enabled`, `cursorAgent.skills.extraDirs`.
+
 See PLAN.md, docs/CLI_NOTES.md and docs/NEXT_FEATURES_PLAN.md.
 
 ## Cursor CLI

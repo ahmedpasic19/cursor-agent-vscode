@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Mode } from '../../../src/shared/events';
 import type {
   ActiveEditor,
+  AgentCommand,
   CliStatus,
   ContextChip,
   HostMessage,
@@ -35,6 +36,7 @@ interface Store {
   focusRequest: number;
   models: ModelOption[];
   modelsSource?: 'cli' | 'setting';
+  commands: AgentCommand[];
   mention: { requestId: number; items: MentionItem[] };
   /** File + selection the user is looking at in the editor; undefined = no text editor focused. */
   activeEditor?: ActiveEditor;
@@ -71,6 +73,7 @@ export const useStore = create<Store>((set, get) => ({
   tick: 0,
   focusRequest: 0,
   models: [],
+  commands: [],
   mention: { requestId: -1, items: [] },
   unread: {},
   sessionRows: [],
@@ -211,6 +214,9 @@ export const useStore = create<Store>((set, get) => ({
         break;
       case 'models/list':
         set({ models: msg.models, modelsSource: msg.source });
+        break;
+      case 'commands/list':
+        set({ commands: msg.commands });
         break;
       case 'changes/updated': {
         const tab = s.tabs[msg.tabId];

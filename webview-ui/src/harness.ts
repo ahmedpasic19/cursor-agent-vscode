@@ -169,6 +169,7 @@ function reset() {
   runOrder.length = 0;
   post({ type: 'state/full', tabs: [{ ...tabMeta(), chips, transcript: [] }], activeTabId: TAB, cli, settings: { defaultMode: 'agent' } });
   post({ type: 'models/list', models: MODELS, source: 'cli' });
+  post({ type: 'commands/list', commands: [] });
   post({ type: 'editor/active', active: ACTIVE_EDITOR });
 }
 

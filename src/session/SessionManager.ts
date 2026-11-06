@@ -1,6 +1,6 @@
 import type { AgentBackend } from '../backend/AgentBackend';
 import type { Mode } from '../shared/events';
-import type { ContextChip, HostMessage, RunRecord } from '../shared/protocol';
+import type { ContextChip, HostMessage, PromptCommandInput, RunRecord } from '../shared/protocol';
 import {
   type CheckpointSource,
   type OverlapTracker,
@@ -36,6 +36,8 @@ export interface ManagerDeps {
   onTabsChanged?(): void;
   /** A run finished (after its record is final). */
   onRunFinished?(tab: TabSession, run: RunRecord): void;
+  /** Expand leading `/skill` into sendText + metadata when enabled. */
+  resolveSlashPrompt?(text: string): Promise<{ sendText: string; promptCommand?: PromptCommandInput } | undefined>;
 }
 
 interface ActiveAgentRun {
@@ -203,10 +205,18 @@ export class SessionManager implements OverlapTracker {
 
   // ---------- runs ----------
 
-  send(tabId: string, text: string, mode: Mode, model: string | undefined, chipIds: string[] = [], chipsOverride?: ContextChip[]): void {
+  async send(tabId: string, text: string, mode: Mode, model: string | undefined, chipIds: string[] = [], chipsOverride?: ContextChip[]): Promise<void> {
     const tab = this.getTab(tabId);
     if (!tab || tab.running) return;
-    tab.enqueue(text, mode, model, chipIds, chipsOverride);
+    let promptOpts: { sendText: string; promptCommand?: PromptCommandInput } | undefined;
+    if (this.deps.resolveSlashPrompt) {
+      try {
+        promptOpts = await this.deps.resolveSlashPrompt(text);
+      } catch {
+        /* Fall back to verbatim send on resolution errors. */
+      }
+    }
+    tab.enqueue(text, mode, model, chipIds, chipsOverride, promptOpts);
     this.queue.push(tab);
     this.pump();
   }
@@ -216,15 +226,15 @@ export class SessionManager implements OverlapTracker {
     const tab = this.getTab(tabId);
     const last = tab?.lastUserMessage();
     if (!tab || !last || tab.running) return;
-    // Re-attach the same context snapshot.
-    this.send(tabId, last.text, last.mode, tab.model, [], last.chips ?? []);
+    // Re-attach the same context snapshot (same effective prompt as the original send).
+    void this.send(tabId, last.text, last.mode, tab.model, [], last.chips ?? []);
   }
 
   /** "Run this plan": resume the same session in Agent mode (docs/CLI_NOTES.md §7). */
   executePlan(tabId: string): void {
     const tab = this.getTab(tabId);
     if (!tab || tab.running) return;
-    this.send(tabId, PLAN_EXECUTE_TEXT, 'agent', tab.model);
+    void this.send(tabId, PLAN_EXECUTE_TEXT, 'agent', tab.model);
   }
 
   /** "Resume" an interrupted run: `continue` on the same session, same mode. */
@@ -232,7 +242,7 @@ export class SessionManager implements OverlapTracker {
     const tab = this.getTab(tabId);
     const last = tab?.lastUserMessage();
     if (!tab || tab.running) return;
-    this.send(tabId, RESUME_TEXT, last?.mode ?? tab.mode, tab.model);
+    void this.send(tabId, RESUME_TEXT, last?.mode ?? tab.mode, tab.model);
   }
 
   stop(tabId: string): void {

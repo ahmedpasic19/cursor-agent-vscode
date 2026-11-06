@@ -3,7 +3,7 @@ import { chipLabel, expandChipTokens } from '../shared/inlineChips';
 import type { CheckpointService } from '../checkpoints/CheckpointService';
 import type { AgentEvent, Mode, RunOutcome } from '../shared/events';
 import { addChip, type AddResult } from '../context/chips';
-import type { ContextChip, RunRecord, TabSnapshot, TranscriptItem, UserMessage } from '../shared/protocol';
+import type { ContextChip, PromptCommandInput, RunRecord, TabSnapshot, TranscriptItem, UserMessage } from '../shared/protocol';
 import { compactEvents } from '../shared/transcript';
 import { buildPrompt, extraRoots, titleFrom } from './promptBuilder';
 
@@ -232,7 +232,14 @@ export class TabSession {
     this.events.onTabReset(this);
   }
 
-  enqueue(text: string, mode: Mode, model: string | undefined, chipIds: string[] = [], chipsOverride?: ContextChip[]): RunRecord {
+  enqueue(
+    text: string,
+    mode: Mode,
+    model: string | undefined,
+    chipIds: string[] = [],
+    chipsOverride?: ContextChip[],
+    promptOpts?: { sendText: string; promptCommand?: PromptCommandInput },
+  ): RunRecord {
     if (this.active) throw new Error('A run is already active in this tab');
     // Consume the requested chips (in composer order).
     const attached = chipsOverride ?? this.chips.filter((c) => chipIds.includes(c.id));
@@ -242,6 +249,7 @@ export class TabSession {
     }
     this.mode = mode;
     this.model = model || undefined;
+    const sendText = promptOpts?.sendText ?? text;
     if (!this.titled) {
       this.title = titleFrom(expandChipTokens(text, attached, chipLabel));
       this.titled = true;
@@ -250,6 +258,8 @@ export class TabSession {
       id: newId('msg'),
       role: 'user',
       text,
+      ...(sendText !== text ? { sendText } : {}),
+      ...(promptOpts?.promptCommand ? { promptCommand: promptOpts.promptCommand } : {}),
       mode,
       at: Date.now(),
       chips: attached.length ? attached : undefined,
@@ -357,7 +367,7 @@ export class TabSession {
     if (run.mode === 'agent') overlap?.agentRunStarted(this, run);
 
     const prompt = buildPrompt({
-      text: user.text,
+      text: user.sendText ?? user.text,
       mode: run.mode,
       sessionMode: this.sessionId ? this.sessionMode : undefined,
       chips: user.chips,

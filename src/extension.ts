@@ -1,3 +1,4 @@
+import { homedir } from 'node:os';
 import * as vscode from 'vscode';
 import { CliService } from './backend/CliService';
 import { BeforeContentProvider } from './checkpoints/BeforeContentProvider';
@@ -10,12 +11,14 @@ import { registerAddToChat } from './context/commands';
 import { fileChip } from './context/ContextCollector';
 import { imageChipForPath, MAX_IMAGE_BYTES, saveImage } from './context/Attachments';
 import { FileIndex } from './context/FileIndex';
+import { SkillIndex } from './context/SkillIndex';
 import { SelectionLens } from './context/SelectionLens';
 import { PlanUsageService } from './account/planUsage';
 import { setCliAuthEnv } from './backend/processUtil';
 import { McpView } from './mcp/McpView';
 import type { Mode } from './shared/events';
 import type { HostMessage, WebviewMessage, ConnectionInfo, ConnectionSetup, PlanUsageState } from './shared/protocol';
+import { expandSlashForPrompt } from './session/commandExpansion';
 import { SessionIndex } from './session/SessionIndex';
 import { SessionManager } from './session/SessionManager';
 import { StatusBar } from './statusBar';
@@ -110,6 +113,20 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     log,
   );
   const sessionsBridge = new WebviewBridge([VIEW_IDS.sessions], 'sessions', context.extensionUri, (msg) => handleSessions(msg), log);
+
+  const skillScanOpts = () => ({
+    enabled: cfg().get<boolean>('skills.enabled', true),
+    extraDirs: cfg().get<string[]>('skills.extraDirs', []).filter(Boolean),
+    workspaceRoots: (vscode.workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath),
+    homeDir: homedir(),
+    pluginDirs: cfg().get<string[]>('pluginDirs', []).filter(Boolean),
+  });
+  let pushCommands: () => Promise<void> = async () => {};
+  const skillIndex = new SkillIndex(log, () => void pushCommands());
+  pushCommands = async () => {
+    const cmds = await skillIndex.list(skillScanOpts());
+    bridge.post({ type: 'commands/list', commands: cmds });
+  };
 
   // What the user is looking at (active file + selection), mirrored above the composer.
   const activeEditor = new ActiveEditorWatcher(
@@ -258,6 +275,14 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     },
     onRunFinished: (tab, run) => {
       if (ledger.record(usageOfEvents(run.events), { chatId: tab.id, model: run.model ?? tab.model })) scheduleAccount();
+    },
+    resolveSlashPrompt: async (text) => {
+      if (!cfg().get<boolean>('skills.enabled', true)) return undefined;
+      const r = await skillIndex.resolveLeadingSlash(text, skillScanOpts());
+      if (!r.resolved) return undefined;
+      const { sendText, command } = expandSlashForPrompt(text, r.resolved);
+      if (!command || sendText === text) return undefined;
+      return { sendText, promptCommand: command };
     },
   });
   manager = mgr;
@@ -535,6 +560,7 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     });
     bridge.flushPending();
     void sendModels();
+    void pushCommands();
   };
 
   const sendModels = async (force = false) => {
@@ -572,6 +598,9 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
         activeEditor.invalidate();
         activeEditor.push();
         break;
+      case 'commands/refresh':
+        void pushCommands();
+        break;
       case 'session/open':
         if (!openSession(msg.id)) {
           bridge.post({ type: 'notice', level: 'error', text: 'That chat could not be loaded.' });
@@ -607,7 +636,7 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
         mgr.resume(msg.tabId);
         break;
       case 'message/send':
-        mgr.send(msg.tabId, msg.text, msg.mode, msg.model, msg.chipIds);
+        void mgr.send(msg.tabId, msg.text, msg.mode, msg.model, msg.chipIds);
         break;
       case 'chip/remove':
         mgr.getTab(msg.tabId)?.removeChip(msg.chipId);
@@ -796,6 +825,10 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
       if (e.affectsConfiguration('cursorAgent.cliPath')) void cli.refresh();
       if (e.affectsConfiguration('cursorAgent.usage.dailyTokenBudget')) scheduleAccount();
       if (e.affectsConfiguration('cursorAgent.showActiveEditor')) activeEditor.push();
+      if (e.affectsConfiguration('cursorAgent.skills.enabled') || e.affectsConfiguration('cursorAgent.skills.extraDirs') || e.affectsConfiguration('cursorAgent.pluginDirs')) {
+        skillIndex.invalidate();
+        void pushCommands();
+      }
       if (e.affectsConfiguration('cursorAgent.cli.useApiKey')) {
         void applyCliAuth().then(() => cli.refresh());
         scheduleAccount();
@@ -816,6 +849,7 @@ export function activate(context: vscode.ExtensionContext): CursorAgentApi {
     }),
     vscode.commands.registerCommand('cursorAgent.installSdk', installSdk),
     fileIndex,
+    skillIndex,
     activeEditor,
     code,
     { dispose: () => mgr.stopAll() },

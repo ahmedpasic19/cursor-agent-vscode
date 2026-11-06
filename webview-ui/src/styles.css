@@ -330,7 +330,8 @@ kbd {
   overflow-y: auto;
   outline: none;
 }
-.option-section {
+.option-section,
+.option-header {
   padding: 8px 8px 3px;
   font-size: 11px;
   color: var(--ca-muted);

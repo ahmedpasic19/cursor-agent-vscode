@@ -207,7 +207,7 @@ cursor-agent-vscode/
 
 - A textarea that auto-grows. Enter sends; Shift+Enter inserts a newline. While a run is active, the send button becomes **Stop**, and `Esc` also stops.
 - **`@` mentions:** a fuzzy file and folder picker built from `vscode.workspace.findFiles`, which respects `.gitignore` and `files.exclude`. Picking an item creates a chip.
-- **`/` commands:** `/new`, `/clear` (starts a new session in the same tab), `/model`, `/mode`, `/history`.
+- **`/` commands:** built-ins `/new`, `/clear` (starts a new session in the same tab), `/model`, `/mode`, `/history`, `/help`, plus **discovered skills** (`~/.cursor/skills/…/SKILL.md`, plugin skills, project `.cursor/skills`) and **custom commands** (`~/.cursor/commands/*.md`), listed and filterable in the same popup. Choosing a skill inserts `/name `; sending expands the prompt on the host so the transcript still shows what you typed.
 - **Context chips** appear above the textarea (spec in 5.4). Each chip has an × to remove it. Chips are consumed on send. They are snapshotted into the user message so the transcript shows what was attached.
 - **Model selector:** a list from `cursor-agent` model listing if Phase 0 finds such a command. Otherwise use the setting `cursorAgent.models` (string array) plus a free-text "custom" entry.
 

@@ -8,7 +8,7 @@ const SHORTCUTS: [string, string][] = [
   ['Esc', 'Stop the run'],
   ['↑ in an empty box', 'Recall your last message'],
   ['@', 'Attach files and folders'],
-  ['/', 'Commands (/model, /mode, /history, /clear)'],
+  ['/', 'Commands, skills and custom prompts (/model, /frontend-design, …)'],
   ['Alt+N', 'New session'],
   ['Ctrl+I', 'Add selection (or focus chat with nothing selected)'],
   ['Ctrl+V · drop', 'Attach a screenshot or image'],

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import type { Mode } from '../../../src/shared/events';
-import type { ContextChip, ModelOption } from '../../../src/shared/protocol';
+import type { AgentCommand, ContextChip, ModelOption } from '../../../src/shared/protocol';
 import { ArrowUpIcon, BranchIcon, FileIcon, PlusIcon, SlashIcon, StopIcon, WarnIcon } from '../sessions/icons';
 import { useStore } from '../state/store';
 import { send } from '../vscode';
@@ -12,6 +12,7 @@ import { getCaret, render, serialize, setCaret } from './richInput';
 import { ModelSelect } from './ModelSelect';
 import { MODES, ModeSelect, nextMode } from './ModeSelect';
 import { OptionRow, Popover } from './Popover';
+import { filterCommands, slashListOptionCount, type BuiltinSlashCommand } from '../../../src/shared/commandFilter';
 
 interface Props {
   tabId?: string;
@@ -40,12 +41,7 @@ const PLACEHOLDER: Record<Mode, string> = {
   plan: 'Describe what to plan. Nothing will be changed',
 };
 
-interface SlashCommand {
-  name: string;
-  args?: string;
-  hint: string;
-}
-const SLASH: SlashCommand[] = [
+const SLASH: BuiltinSlashCommand[] = [
   { name: 'new', hint: 'Start a new chat' },
   { name: 'clear', hint: 'Start a new session in this tab' },
   { name: 'model', args: '[id]', hint: 'Pick or set the model' },
@@ -88,6 +84,7 @@ export function Composer(props: Props) {
   const openHelp = useStore((s) => s.openHelp);
   const ref = useRef<HTMLDivElement>(null);
   const mention = useStore((s) => s.mention);
+  const commands = useStore((s) => s.commands);
   const showNotice = useStore((s) => s.showNotice);
 
   /** Set the value programmatically: state, DOM and (optionally) the caret. */
@@ -157,7 +154,7 @@ export function Composer(props: Props) {
       if (tabId) send({ type: 'mention/search', tabId, query, requestId: ++mentionRequest });
       return;
     }
-    const s = /^\/(\w*)$/.exec(before);
+    const s = /^\/([\w:-]*)$/.exec(before);
     if (s && !value.includes('\n')) {
       setPopup({ kind: 'slash', query: s[1]! });
       setActive(0);
@@ -166,12 +163,12 @@ export function Composer(props: Props) {
     setPopup(undefined);
   };
 
-  const slashOptions = useMemo(
-    () => (popup?.kind === 'slash' ? SLASH.filter((c) => c.name.startsWith(popup.query.toLowerCase())) : []),
-    [popup],
+  const slashRows = useMemo(
+    () => (popup?.kind === 'slash' ? filterCommands(popup.query, SLASH, commands) : []),
+    [popup, commands],
   );
   const mentionOptions = popup?.kind === 'mention' && mention.requestId === mentionRequest ? mention.items : [];
-  const optionCount = popup?.kind === 'slash' ? slashOptions.length : mentionOptions.length;
+  const optionCount = popup?.kind === 'slash' ? slashListOptionCount(slashRows) : mentionOptions.length;
 
   const pickMention = (i: number) => {
     const item = mentionOptions[i];
@@ -186,27 +183,36 @@ export function Composer(props: Props) {
   };
 
   const pickSlash = (i: number) => {
-    const c = slashOptions[i];
-    if (!c) return;
-    if (c.args) {
-      ref.current?.focus();
-      apply(`/${c.name} `, c.name.length + 2);
-      setPopup(undefined);
-    } else {
-      runSlash(`/${c.name}`);
+    const pickable = slashRows.flatMap((r) => (r.type === 'header' ? [] : [r]));
+    const row = pickable[i];
+    if (!row) return;
+    if (row.type === 'builtin') {
+      const c = row.cmd;
+      if (c.args) {
+        ref.current?.focus();
+        apply(`/${c.name} `, c.name.length + 2);
+        setPopup(undefined);
+      } else {
+        runSlash(`/${c.name}`);
+      }
+      return;
     }
+    ref.current?.focus();
+    apply(`/${row.cmd.name} `, row.cmd.name.length + 2);
+    setPopup(undefined);
   };
 
   /** Returns true if `t` was a slash command (handled, not sent). */
   const runSlash = (t: string): boolean => {
-    const m = /^\/(\w+)(?:\s+(.*))?$/.exec(t.trim());
+    const m = /^\/([\w:-]+)(?:\s+(.*))?$/.exec(t.trim());
     if (!m) return false;
     const [, name, arg] = m;
     const clear = () => {
       apply('', 0);
       setPopup(undefined);
     };
-    switch (name) {
+        if (commands.some((c) => c.name === name)) return false;
+        switch (name) {
       case 'new':
         send({ type: 'tab/new' });
         clear();
@@ -396,21 +402,56 @@ export function Composer(props: Props) {
         <div className="popover above align-stretch composer-popup" role="listbox">
           <div className="option-list">
             {popup.kind === 'slash' &&
-              slashOptions.map((c, i) => (
-                <OptionRow
-                  key={c.name}
-                  label={
-                    <span className="mono">
-                      /{c.name}
-                      {c.args ? <span className="muted"> {c.args}</span> : null}
-                    </span>
+              (() => {
+                let pickIdx = 0;
+                return slashRows.map((row, ri) => {
+                  if (row.type === 'header') {
+                    return (
+                      <div key={`h-${row.label}-${ri}`} className="option-header muted" role="presentation">
+                        {row.label}
+                      </div>
+                    );
                   }
-                  trailing={<span className="option-hint">{c.hint}</span>}
-                  active={i === active}
-                  onHover={() => setActive(i)}
-                  onPick={() => pickSlash(i)}
-                />
-              ))}
+                  if (row.type === 'builtin') {
+                    const c = row.cmd;
+                    const idx = pickIdx++;
+                    return (
+                      <OptionRow
+                        key={`b-${c.name}`}
+                        label={
+                          <span className="mono">
+                            /{c.name}
+                            {c.args ? <span className="muted"> {c.args}</span> : null}
+                          </span>
+                        }
+                        trailing={<span className="option-hint">{c.hint}</span>}
+                        active={idx === active}
+                        onHover={() => setActive(idx)}
+                        onPick={() => pickSlash(idx)}
+                      />
+                    );
+                  }
+                  const c: AgentCommand = row.cmd;
+                  const idx = pickIdx++;
+                  const desc = c.description ? (c.description.length > 120 ? `${c.description.slice(0, 119)}…` : c.description) : undefined;
+                  return (
+                    <OptionRow
+                      key={`d-${c.kind}-${c.name}-${c.file}`}
+                      label={
+                        <span className="mono">
+                          /{c.name}
+                          {c.userOnly ? <span className="muted"> · user-only</span> : null}
+                        </span>
+                      }
+                      description={desc}
+                      trailing={<span className="option-hint">{c.source}</span>}
+                      active={idx === active}
+                      onHover={() => setActive(idx)}
+                      onPick={() => pickSlash(idx)}
+                    />
+                  );
+                });
+              })()}
             {popup.kind === 'mention' &&
               mentionOptions.map((m, i) => (
                 <OptionRow
@@ -434,7 +475,9 @@ export function Composer(props: Props) {
                 />
               ))}
             {optionCount === 0 && (
-              <div className="option-empty">{popup.kind === 'mention' ? (popup.query ? 'No matching files.' : 'Searching…') : 'No such command.'}</div>
+              <div className="option-empty">
+                {popup.kind === 'mention' ? (popup.query ? 'No matching files.' : 'Searching…') : 'No matching command or skill.'}
+              </div>
             )}
           </div>
         </div>

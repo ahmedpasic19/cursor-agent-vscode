@@ -57,10 +57,24 @@ export const ContextChipSchema = z.discriminatedUnion('kind', [
 ]);
 export type ContextChip = z.infer<typeof ContextChipSchema>;
 
+/** Expansion target for a leading `/name` (stored on the user message; transcript shows `text`). */
+export const PromptCommandInputSchema = z.object({
+  kind: z.enum(['skill', 'command']),
+  name: z.string(),
+  file: z.string(),
+  body: z.string().optional(),
+  args: z.string().optional(),
+});
+export type PromptCommandInput = z.infer<typeof PromptCommandInputSchema>;
+
 export const UserMessageSchema = z.object({
   id: z.string(),
   role: z.literal('user'),
+  /** What the user typed (includes `/skill …`). */
   text: z.string(),
+  /** When set, this is sent to the agent instead of `text` (skill/command expansion). */
+  sendText: z.string().optional(),
+  promptCommand: PromptCommandInputSchema.optional(),
   mode: ModeSchema,
   at: z.number(),
   /** Chips attached to this message (snapshotted at send time). */
@@ -276,6 +290,17 @@ export const MentionItemSchema = z.object({
 });
 export type MentionItem = z.infer<typeof MentionItemSchema>;
 
+/** Discovered skill or custom slash command (SKILL.md / commands/*.md). */
+export const AgentCommandSchema = z.object({
+  name: z.string(),
+  kind: z.enum(['skill', 'command']),
+  description: z.string().optional(),
+  file: z.string(),
+  source: z.string(),
+  userOnly: z.boolean().optional(),
+});
+export type AgentCommand = z.infer<typeof AgentCommandSchema>;
+
 // ---------- host → webview ----------
 
 export const HostMessageSchema = z.discriminatedUnion('type', [
@@ -311,6 +336,7 @@ export const HostMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('editor/active'), active: ActiveEditorSchema.optional() }),
   z.object({ type: z.literal('mention/results'), requestId: z.number(), items: z.array(MentionItemSchema) }),
   z.object({ type: z.literal('models/list'), models: z.array(ModelOptionSchema), source: z.enum(['cli', 'setting']) }),
+  z.object({ type: z.literal('commands/list'), commands: z.array(AgentCommandSchema) }),
   /** Transient message shown in the panel (e.g. "chip over the size limit"). */
   z.object({ type: z.literal('notice'), level: z.enum(['info', 'warning', 'error']), text: z.string() }),
   z.object({ type: z.literal('cli/status'), cli: CliStatusSchema }),
@@ -377,6 +403,7 @@ export const WebviewMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('tab/clear'), tabId: z.string() }),
   z.object({ type: z.literal('tab/setModel'), tabId: z.string(), model: z.string().optional() }),
   z.object({ type: z.literal('models/refresh') }),
+  z.object({ type: z.literal('commands/refresh') }),
   z.object({ type: z.literal('changes/openDiff'), tabId: z.string(), runId: z.string(), path: z.string() }),
   z.object({ type: z.literal('changes/revertFile'), tabId: z.string(), runId: z.string(), path: z.string() }),
   z.object({ type: z.literal('changes/keepFile'), tabId: z.string(), runId: z.string(), path: z.string() }),

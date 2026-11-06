@@ -3,6 +3,7 @@ import type { ContextChip } from '../shared/protocol';
 import { expandChipTokens } from '../shared/inlineChips';
 
 export interface PromptInput {
+  /** Text sent to the agent (<user_message>), after chip-token expansion. Usually the composer text; use `user.sendText ?? user.text` when a slash skill expanded the body. */
   text: string;
   mode: Mode;
   /** Mode the resumed CLI session is currently in, if we are resuming one. */
