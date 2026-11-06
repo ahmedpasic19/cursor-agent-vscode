@@ -301,111 +301,6 @@ kbd {
   border-top: 1px solid var(--ca-border);
   font-size: 11px;
 }
-.popover-secondary-footer {
-  border-top: 1px solid var(--ca-border);
-}
-.effort-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  width: 100%;
-  min-height: 28px;
-  padding: 2px 4px;
-  border-radius: var(--ca-radius);
-  font-size: 11px;
-  color: var(--ca-text);
-  outline: none;
-}
-.effort-row.disabled {
-  color: var(--ca-muted);
-}
-.effort-row:not(.disabled):focus-visible {
-  box-shadow: 0 0 0 1px var(--ca-accent);
-}
-/* The label is text only: clicking it must never move the slider. */
-.effort-label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-  min-width: 0;
-  pointer-events: none;
-  user-select: none;
-}
-.effort-value {
-  color: var(--ca-muted);
-}
-.effort-track {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  flex: none;
-}
-/* One cell per step: a blue lead-in up to the knob, dim dots after it. */
-.effort-step {
-  position: relative;
-  width: 15px;
-  height: 16px;
-  padding: 0;
-  margin: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-  flex: none;
-}
-.effort-step:disabled {
-  cursor: default;
-}
-.effort-step::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 4px;
-  transform: translateY(-50%);
-  background: transparent;
-}
-.effort-step.is-fill::before,
-.effort-step.is-knob::before {
-  background: var(--ca-accent);
-}
-.effort-step.is-knob::before {
-  right: 50%;
-}
-.effort-step.is-first::before {
-  border-top-left-radius: 999px;
-  border-bottom-left-radius: 999px;
-}
-.effort-step::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 4px;
-  height: 4px;
-  border-radius: 999px;
-  transform: translate(-50%, -50%);
-  background: var(--ca-muted);
-  opacity: 0.45;
-}
-.effort-step.is-knob::after {
-  width: 11px;
-  height: 11px;
-  background: var(--vscode-foreground, #fff);
-  opacity: 1;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ca-accent) 70%, transparent);
-}
-.effort-row.disabled .effort-step::after {
-  opacity: 0.25;
-}
-.effort-step:not(:disabled):hover::after {
-  opacity: 0.8;
-}
-.effort-step.is-knob:not(:disabled):hover::after {
-  opacity: 1;
-}
 .popover-search {
   display: flex;
   align-items: center;
@@ -1567,11 +1462,6 @@ body.vscode-high-contrast .composer-box:focus-within {
 }
 .model-select {
   margin-left: 4px;
-}
-.model-effort {
-  margin-left: 4px;
-  color: var(--ca-muted);
-  flex: none;
 }
 .model-label {
   overflow: hidden;

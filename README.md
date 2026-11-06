@@ -21,8 +21,6 @@ Context:
 - **Looking at:** the composer's bottom bar shows the file you have open and, while you have something selected, how
   many lines — click either pill to attach it, exactly as Ctrl+I would. A pill that is already attached shows a ✓
   instead, and ✕ hides the pills until you move to something else.
-- **Effort:** the model and mode popovers include an effort slider (Low / Medium / High / XHigh / Max); it switches
-  among sibling CLI model ids and remembers your preferred level when you pick another model family.
 - **Models:** the picker opens on a short list — Cursor's own models and a handful of the rest. *Show all models*, or
   just typing, searches the whole catalog.
 - **Images and files:** paste a screenshot (Ctrl+V), hold Shift and drop files onto the panel, or *+ → Attach image*.

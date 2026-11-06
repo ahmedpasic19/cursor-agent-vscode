@@ -98,5 +98,6 @@ export function familyRepresentativeId(models: ModelOption[], family: string, fa
     return q.family === family && q.fast === fast;
   });
   if (group.length === 0) return undefined;
+  if (!group.some((m) => parseModelId(m.id).token !== undefined)) return undefined;
   return representativeIdForFamilyGroup(group);
 }
